@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8001/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://karbalaconnect.in/api',
   headers: { Accept: 'application/json' },
 });
 
