@@ -1,84 +1,133 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
 
-const CATEGORY_COLORS = { dua: '#006B6B', noha: '#8B0000', manqabat: '#4B0082', naat: '#8B5E00' };
+const CAT_META = {
+  dua:      { label: 'Duas',      color: '#06B6D4', bg: 'rgba(6,182,212,.1)',   border: 'rgba(6,182,212,.25)',   icon: '🤲' },
+  noha:     { label: 'Nauhe',     color: '#EF4444', bg: 'rgba(239,68,68,.1)',   border: 'rgba(239,68,68,.25)',   icon: '💧' },
+  manqabat: { label: 'Manqabat',  color: '#8B5CF6', bg: 'rgba(139,92,246,.1)', border: 'rgba(139,92,246,.25)', icon: '✨' },
+  naat:     { label: 'Naats',     color: '#F97316', bg: 'rgba(249,115,22,.1)',  border: 'rgba(249,115,22,.25)',  icon: '🎵' },
+};
+
+const QUICK = [
+  { href: '/tracks',  icon: AddTrackIcon,  label: 'Track Add Karein',  color: 'var(--gold)' },
+  { href: '/reciters',icon: AddReciterIcon,label: 'Reciter Add Karein',color: 'var(--emerald-light)' },
+  { href: '/tracks',  icon: StarIcon,      label: 'Featured Set Karein',color: '#F97316' },
+  { href: '/users',   icon: UsersIcon,     label: 'Users Dekhein',     color: '#06B6D4' },
+];
 
 export default function Dashboard() {
   const [stats, setStats] = useState({ tracks: 0, reciters: 0, users: 0 });
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [tracks, reciters, users] = await Promise.all([
-          client.get('/tracks'),
-          client.get('/reciters'),
-          client.get('/users'),
-        ]);
-        setStats({
-          tracks: tracks.data.length,
-          reciters: reciters.data.length,
-          users: users.data.length,
-        });
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
+    Promise.all([
+      client.get('/tracks'),
+      client.get('/reciters'),
+      client.get('/users'),
+    ]).then(([t, r, u]) => {
+      setStats({ tracks: t.data.length, reciters: r.data.length, users: u.data.length });
+    }).catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   const statCards = [
-    { label: 'Total Tracks', value: stats.tracks, icon: '🎵', color: 'var(--gold)' },
-    { label: 'Reciters', value: stats.reciters, icon: '🎤', color: '#4B9CD3' },
-    { label: 'Users', value: stats.users, icon: '👥', color: '#2E7D32' },
+    { label: 'Total Tracks',   value: stats.tracks,   icon: <MusicIcon />,   color: 'var(--gold)',          bg: 'rgba(212,168,67,.1)',  border: 'rgba(212,168,67,.25)', href: '/tracks' },
+    { label: 'Reciters',       value: stats.reciters, icon: <MicIcon />,     color: 'var(--emerald-light)', bg: 'rgba(22,163,74,.1)',   border: 'rgba(22,163,74,.25)',  href: '/reciters' },
+    { label: 'Registered Users',value: stats.users,   icon: <PeopleIcon />,  color: '#06B6D4',              bg: 'rgba(6,182,212,.1)',   border: 'rgba(6,182,212,.25)',  href: '/users' },
   ];
 
-  const categories = [
-    { id: 'dua', label: 'Duas' },
-    { id: 'noha', label: 'Nauhe' },
-    { id: 'manqabat', label: 'Manqabat' },
-    { id: 'naat', label: 'Naats' },
-  ];
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>Dashboard</h2>
-        <p style={styles.subtitle}>Karbala Connect ka overview</p>
+    <div className="page-wrapper">
+      {/* Header */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+          <div style={dot} />
+          <h2 className="page-title">Dashboard</h2>
+        </div>
+        <p className="page-subtitle">
+          Khush aamdeed, <span style={{ color: 'var(--gold)', fontWeight: 600 }}>{user.name || 'Admin'}</span> — Karbala Connect ka overview
+        </p>
       </div>
 
-      {loading ? <p style={{ color: 'var(--grey)' }}>Loading...</p> : (
+      {loading ? <LoadingPulse /> : (
         <>
-          <div style={styles.statsGrid}>
+          {/* Stat Cards */}
+          <div style={statsGrid}>
             {statCards.map(card => (
-              <div key={card.label} style={styles.statCard}>
-                <div style={styles.statIcon}>{card.icon}</div>
+              <div
+                key={card.label}
+                onClick={() => navigate(card.href)}
+                style={{ ...statCard, borderColor: card.border, cursor: 'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+              >
+                <div style={{ ...iconBox, background: card.bg, border: `1px solid ${card.border}` }}>
+                  <span style={{ color: card.color }}>{card.icon}</span>
+                </div>
                 <div>
-                  <div style={{ ...styles.statValue, color: card.color }}>{card.value}</div>
-                  <div style={styles.statLabel}>{card.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: card.color, lineHeight: 1 }}>{card.value}</div>
+                  <div style={{ color: 'var(--grey)', fontSize: 12, marginTop: 5 }}>{card.label}</div>
+                </div>
+                <div style={{ marginLeft: 'auto', color: 'var(--grey-dark)' }}>
+                  <ChevronIcon />
                 </div>
               </div>
             ))}
           </div>
 
-          <h3 style={styles.sectionTitle}>Categories</h3>
-          <div style={styles.catGrid}>
-            {categories.map(cat => (
-              <div key={cat.id} style={{ ...styles.catCard, borderColor: CATEGORY_COLORS[cat.id], background: CATEGORY_COLORS[cat.id] + '22' }}>
-                <div style={{ color: CATEGORY_COLORS[cat.id], fontSize: 18, fontWeight: 700 }}>{cat.label}</div>
-                <div style={{ color: 'var(--grey)', fontSize: 12, marginTop: 4 }}>Tracks manage karein</div>
-              </div>
-            ))}
+          {/* Categories */}
+          <div style={{ marginBottom: 32 }}>
+            <div className="section-title-row">
+              <div className="accent-bar" style={{ background: 'linear-gradient(to bottom, var(--emerald-light), var(--emerald))' }} />
+              <h3 className="section-title">Categories</h3>
+            </div>
+            <div style={catGrid}>
+              {Object.entries(CAT_META).map(([id, m]) => (
+                <div
+                  key={id}
+                  onClick={() => navigate('/tracks')}
+                  style={{ ...catCard, background: m.bg, borderColor: m.border, cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                >
+                  <div style={{ fontSize: 26, marginBottom: 10 }}>{m.icon}</div>
+                  <div style={{ color: m.color, fontSize: 15, fontWeight: 700 }}>{m.label}</div>
+                  <div style={{ color: 'var(--grey)', fontSize: 11, marginTop: 4 }}>Tracks manage karein</div>
+                  <div style={{ height: 2, background: `linear-gradient(to right, ${m.color}, transparent)`, marginTop: 12, borderRadius: 2 }} />
+                </div>
+              ))}
+            </div>
           </div>
 
-          <h3 style={styles.sectionTitle}>Quick Actions</h3>
-          <div style={styles.quickGrid}>
-            <QuickCard href="/tracks" icon="🎵" label="Track Add Karein" />
-            <QuickCard href="/reciters" icon="🎤" label="Reciter Add Karein" />
-            <QuickCard href="/tracks" icon="⭐" label="Featured Set Karein" />
-            <QuickCard href="/users" icon="👥" label="Users Dekhein" />
+          {/* Quick Actions */}
+          <div>
+            <div className="section-title-row">
+              <div className="accent-bar" style={{ background: 'linear-gradient(to bottom, var(--gold-light), var(--gold))' }} />
+              <h3 className="section-title">Quick Actions</h3>
+            </div>
+            <div style={quickGrid}>
+              {QUICK.map((q, i) => (
+                <a key={i} href={q.href} style={quickCard}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = q.color;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = 'var(--divider)';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                >
+                  <div style={{ ...quickIcon, background: `${q.color}15`, border: `1px solid ${q.color}30` }}>
+                    <span style={{ color: q.color }}><q.icon /></span>
+                  </div>
+                  <span style={{ color: 'var(--grey-light)', fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>{q.label}</span>
+                </a>
+              ))}
+            </div>
           </div>
         </>
       )}
@@ -86,28 +135,103 @@ export default function Dashboard() {
   );
 }
 
-function QuickCard({ href, icon, label }) {
+function LoadingPulse() {
   return (
-    <a href={href} style={styles.quickCard}>
-      <span style={{ fontSize: 24 }}>{icon}</span>
-      <span style={{ color: 'var(--white)', fontSize: 13 }}>{label}</span>
-    </a>
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {[1, 2, 3].map(i => (
+        <div key={i} style={{
+          flex: '1 1 200px', height: 100,
+          background: 'var(--bg-card)',
+          borderRadius: 16, border: '1px solid var(--divider)',
+          animation: 'pulse 1.5s ease-in-out infinite',
+        }} />
+      ))}
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
+    </div>
   );
 }
 
-const styles = {
-  page: { padding: '28px 32px', maxWidth: 900 },
-  header: { marginBottom: 28 },
-  title: { color: 'var(--white)', fontSize: 22, fontWeight: 700 },
-  subtitle: { color: 'var(--grey)', fontSize: 13, marginTop: 4 },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32 },
-  statCard: { background: 'var(--bg-card)', border: '1px solid #2A1200', borderRadius: 12, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 },
-  statIcon: { fontSize: 32 },
-  statValue: { fontSize: 32, fontWeight: 700, lineHeight: 1 },
-  statLabel: { color: 'var(--grey)', fontSize: 13, marginTop: 4 },
-  sectionTitle: { color: 'var(--gold)', fontSize: 15, fontWeight: 600, marginBottom: 12 },
-  catGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 32 },
-  catCard: { border: '1px solid', borderRadius: 10, padding: 16 },
-  quickGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 },
-  quickCard: { background: 'var(--bg-card)', border: '1px solid #2A1200', borderRadius: 10, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
+// SVG Icon components
+const MusicIcon  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>;
+const MicIcon    = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg>;
+const PeopleIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+const ChevronIcon= () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>;
+const AddTrackIcon=() => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+const AddReciterIcon=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg>;
+const StarIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+const UsersIcon  = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+
+const dot = {
+  width: 8, height: 8, borderRadius: '50%',
+  background: 'var(--emerald-light)',
+  boxShadow: '0 0 8px var(--emerald)',
+};
+
+const statsGrid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: 16,
+  marginBottom: 36,
+};
+
+const statCard = {
+  background: 'var(--bg-card)',
+  border: '1px solid',
+  borderRadius: 16,
+  padding: '22px 24px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 16,
+  transition: 'transform .2s, box-shadow .2s',
+};
+
+const iconBox = {
+  width: 50,
+  height: 50,
+  borderRadius: 14,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+};
+
+const catGrid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+  gap: 12,
+};
+
+const catCard = {
+  border: '1px solid',
+  borderRadius: 16,
+  padding: '20px 18px',
+  transition: 'transform .2s',
+};
+
+const quickGrid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+  gap: 12,
+};
+
+const quickCard = {
+  background: 'var(--bg-card)',
+  border: '1px solid var(--divider)',
+  borderRadius: 16,
+  padding: '22px 16px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 12,
+  transition: 'border-color .15s, transform .15s',
+  textDecoration: 'none',
+};
+
+const quickIcon = {
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };

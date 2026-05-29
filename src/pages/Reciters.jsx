@@ -3,6 +3,12 @@ import client from '../api/client';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat'];
 const LANGUAGES = ['Arabic', 'Urdu', 'Punjabi', 'Hindi', 'Farsi', 'English'];
+const CAT_COLORS = {
+  dua:      { color: '#06B6D4', bg: 'rgba(6,182,212,.12)',   border: 'rgba(6,182,212,.3)'   },
+  noha:     { color: '#EF4444', bg: 'rgba(239,68,68,.12)',   border: 'rgba(239,68,68,.3)'   },
+  manqabat: { color: '#8B5CF6', bg: 'rgba(139,92,246,.12)', border: 'rgba(139,92,246,.3)' },
+  naat:     { color: '#F97316', bg: 'rgba(249,115,22,.12)',  border: 'rgba(249,115,22,.3)'  },
+};
 const emptyForm = { name: '', bio: '', categories: [], languages: [], total_tracks: 0, is_verified: false };
 
 export default function Reciters() {
@@ -14,27 +20,19 @@ export default function Reciters() {
   const [imageFile, setImageFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => { fetchReciters(); }, []);
 
   const fetchReciters = () => {
     setLoading(true);
-    client.get('/reciters')
-      .then(res => setReciters(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    client.get('/reciters').then(r => setReciters(r.data)).catch(console.error).finally(() => setLoading(false));
   };
 
-  const toggleArray = (arr, val) =>
-    arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
+  const toggle = (arr, val) => arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
-    setSaveError('');
-    setUploadProgress(0);
-
+    setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
       fd.append('name', form.name);
@@ -44,186 +42,251 @@ export default function Reciters() {
       fd.append('categories', JSON.stringify(form.categories || []));
       fd.append('languages', JSON.stringify(form.languages || []));
       if (imageFile) fd.append('image', imageFile);
-
-      if (editId) {
-        await client.post(`/reciters/${editId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      } else {
-        await client.post('/reciters', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      }
-      resetForm();
-      fetchReciters();
+      const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
+      if (editId) await client.post(`/reciters/${editId}`, fd, opts);
+      else await client.post('/reciters', fd, opts);
+      resetForm(); fetchReciters();
     } catch (err) {
       setSaveError(err.response?.data?.message || 'Error saving reciter.');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handleEdit = (r) => {
     setForm({ ...r, categories: r.categories || [], languages: r.languages || [] });
-    setEditId(r.id);
-    setShowForm(true);
-    setImageFile(null);
-    setSaveError('');
+    setEditId(r.id); setShowForm(true); setImageFile(null); setSaveError('');
     window.scrollTo(0, 0);
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Reciter delete karna chahte ho?')) return;
-    await client.delete(`/reciters/${id}`);
-    fetchReciters();
+    await client.delete(`/reciters/${id}`); fetchReciters();
   };
 
   const resetForm = () => {
-    setForm(emptyForm);
-    setEditId(null);
-    setShowForm(false);
-    setImageFile(null);
-    setSaveError('');
-    setUploadProgress(0);
+    setForm(emptyForm); setEditId(null); setShowForm(false); setImageFile(null); setSaveError('');
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
+    <div className="page-wrapper">
+      <div className="page-header">
         <div>
-          <h2 style={styles.title}>Reciters</h2>
-          <p style={styles.subtitle}>{reciters.length} reciters</p>
+          <h2 className="page-title">Reciters</h2>
+          <p className="page-subtitle">{reciters.length} reciters registered</p>
         </div>
-        <button onClick={() => { resetForm(); setShowForm(!showForm); }} style={styles.addBtn}>
+        <button className="btn-primary" onClick={() => { resetForm(); setShowForm(p => !p); }}>
           {showForm ? '✕ Cancel' : '+ Reciter Add Karein'}
         </button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <h3 style={styles.formTitle}>{editId ? 'Reciter Edit' : 'Naya Reciter'}</h3>
-          <div style={styles.formGrid}>
-            <div>
-              <label style={styles.label}>Naam *</label>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required style={styles.input} />
-            </div>
-            <div>
-              <label style={styles.label}>Total Tracks</label>
-              <input type="number" value={form.total_tracks} onChange={e => setForm(f => ({ ...f, total_tracks: +e.target.value }))} style={styles.input} />
-            </div>
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={styles.label}>Bio</label>
-              <textarea value={form.bio || ''} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} rows={3} style={{ ...styles.input, resize: 'vertical' }} />
-            </div>
-            <div>
-              <label style={styles.label}>Categories</label>
-              <div style={styles.checkGroup}>
-                {CATEGORIES.map(c => (
-                  <label key={c} style={styles.checkLabel}>
-                    <input type="checkbox" checked={(form.categories || []).includes(c)}
-                      onChange={() => setForm(f => ({ ...f, categories: toggleArray(f.categories || [], c) }))} />
-                    {c}
-                  </label>
-                ))}
+        <div className="form-card" style={{ marginBottom: 24 }}>
+          <div className="section-title-row" style={{ marginBottom: 22 }}>
+            <div className="accent-bar" />
+            <h3 className="section-title">{editId ? 'Reciter Edit Karein' : 'Naya Reciter Add Karein'}</h3>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="form-grid-2">
+              <div>
+                <label className="form-label">Naam *</label>
+                <input className="form-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+              </div>
+              <div>
+                <label className="form-label">Total Tracks</label>
+                <input className="form-input" type="number" value={form.total_tracks} onChange={e => setForm(f => ({ ...f, total_tracks: +e.target.value }))} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">Bio</label>
+                <textarea className="form-input" value={form.bio || ''} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} rows={3} style={{ resize: 'vertical' }} />
+              </div>
+
+              {/* Categories */}
+              <div>
+                <label className="form-label">Categories</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                  {CATEGORIES.map(c => {
+                    const cm = CAT_COLORS[c];
+                    const checked = (form.categories || []).includes(c);
+                    return (
+                      <button key={c} type="button"
+                        onClick={() => setForm(f => ({ ...f, categories: toggle(f.categories || [], c) }))}
+                        style={{
+                          padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                          background: checked ? cm.bg : 'var(--bg-surface)',
+                          color: checked ? cm.color : 'var(--grey)',
+                          border: `1px solid ${checked ? cm.border : 'var(--divider)'}`,
+                          transition: 'all .15s',
+                        }}>
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Languages */}
+              <div>
+                <label className="form-label">Languages</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                  {LANGUAGES.map(l => {
+                    const checked = (form.languages || []).includes(l);
+                    return (
+                      <button key={l} type="button"
+                        onClick={() => setForm(f => ({ ...f, languages: toggle(f.languages || [], l) }))}
+                        style={{
+                          padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                          background: checked ? 'rgba(22,163,74,.12)' : 'var(--bg-surface)',
+                          color: checked ? 'var(--emerald-light)' : 'var(--grey)',
+                          border: `1px solid ${checked ? 'rgba(22,163,74,.3)' : 'var(--divider)'}`,
+                          transition: 'all .15s',
+                        }}>
+                        {l}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Verified */}
+              <div>
+                <label className="form-label">Verified Status</label>
+                <select className="form-input" value={form.is_verified ? 'yes' : 'no'} onChange={e => setForm(f => ({ ...f, is_verified: e.target.value === 'yes' }))}>
+                  <option value="no">Not Verified</option>
+                  <option value="yes">✓ Verified</option>
+                </select>
+              </div>
+
+              {/* Photo */}
+              <div>
+                <label className="form-label">Photo Upload</label>
+                <input type="file" accept="image/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }}
+                  onChange={e => setImageFile(e.target.files[0])} />
+                {(imageFile || form.image_url) && (
+                  <img src={imageFile ? URL.createObjectURL(imageFile) : form.image_url} alt=""
+                    style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', marginTop: 10, border: '2px solid var(--gold)' }} />
+                )}
               </div>
             </div>
-            <div>
-              <label style={styles.label}>Languages</label>
-              <div style={styles.checkGroup}>
-                {LANGUAGES.map(l => (
-                  <label key={l} style={styles.checkLabel}>
-                    <input type="checkbox" checked={(form.languages || []).includes(l)}
-                      onChange={() => setForm(f => ({ ...f, languages: toggleArray(f.languages || [], l) }))} />
-                    {l}
-                  </label>
-                ))}
-              </div>
+
+            {saveError && <div className="err-banner" style={{ marginTop: 16 }}>{saveError}</div>}
+            <div className="form-actions">
+              <button type="button" className="btn-cancel" onClick={resetForm}>Cancel</button>
+              <button type="submit" className="btn-save" disabled={saving}>
+                {saving ? 'Saving...' : editId ? 'Update Karein' : 'Add Karein'}
+              </button>
             </div>
-            <div>
-              <label style={styles.label}>Verified</label>
-              <select value={form.is_verified ? 'yes' : 'no'} onChange={e => setForm(f => ({ ...f, is_verified: e.target.value === 'yes' }))} style={styles.input}>
-                <option value="no">No</option>
-                <option value="yes">Yes ✓</option>
-              </select>
-            </div>
-            <div>
-              <label style={styles.label}>Photo Upload</label>
-              <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} style={styles.fileInput} />
-              {(imageFile || form.image_url) && (
-                <img src={imageFile ? URL.createObjectURL(imageFile) : form.image_url} alt="" style={styles.imgPreview} />
-              )}
-            </div>
-          </div>
-          {saveError && (
-            <div style={{ background: '#3B0000', border: '1px solid var(--red)', borderRadius: 8, padding: '10px 14px', marginTop: 12, color: '#FF6B6B', fontSize: 13 }}>
-              {saveError}
-            </div>
-          )}
-          <div style={styles.formActions}>
-            <button type="button" onClick={resetForm} style={styles.cancelBtn}>Cancel</button>
-            <button type="submit" disabled={saving} style={styles.saveBtn}>
-              {saving ? 'Saving...' : editId ? 'Update' : 'Add Karein'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       )}
 
-      {loading ? <p style={{ color: 'var(--grey)' }}>Loading...</p> : (
-        <div style={styles.grid}>
-          {reciters.length === 0 && <p style={{ color: 'var(--grey)' }}>Koi reciter nahi</p>}
-          {reciters.map(r => (
-            <div key={r.id} style={styles.card}>
-              <div style={styles.cardTop}>
-                <div style={styles.avatar}>
-                  {r.image_url ? <img src={r.image_url} alt={r.name} style={styles.avatarImg} /> : <span style={{ fontSize: 28 }}>🎤</span>}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={styles.name}>{r.name}{r.is_verified && <span style={styles.verified}>✓</span>}</div>
-                  <div style={styles.meta}>{r.total_tracks} tracks</div>
-                </div>
-              </div>
-              {r.bio && <p style={styles.bio}>{r.bio}</p>}
-              <div style={styles.tags}>
-                {(r.languages || []).map(l => <span key={l} style={styles.tag}>{l}</span>)}
-              </div>
-              <div style={styles.cardActions}>
-                <button onClick={() => handleEdit(r)} style={styles.editBtn}>Edit</button>
-                <button onClick={() => handleDelete(r.id)} style={styles.deleteBtn}>Delete</button>
-              </div>
-            </div>
-          ))}
+      {loading ? (
+        <GridSkeleton />
+      ) : (
+        <div style={grid}>
+          {reciters.length === 0 && (
+            <p style={{ color: 'var(--grey)', gridColumn: '1/-1', padding: '40px 0', textAlign: 'center' }}>Koi reciter nahi</p>
+          )}
+          {reciters.map(r => <ReciterCard key={r.id} r={r} onEdit={handleEdit} onDelete={handleDelete} />)}
         </div>
       )}
     </div>
   );
 }
 
-const styles = {
-  page: { padding: '28px 32px', maxWidth: 960 },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-  title: { color: 'var(--white)', fontSize: 22, fontWeight: 700 },
-  subtitle: { color: 'var(--grey)', fontSize: 13, marginTop: 4 },
-  addBtn: { background: 'var(--gold)', color: '#0D0500', fontWeight: 700, padding: '9px 18px', borderRadius: 8, fontSize: 13 },
-  form: { background: 'var(--bg-card)', border: '1px solid #2A1200', borderRadius: 12, padding: 24, marginBottom: 24 },
-  formTitle: { color: 'var(--gold)', marginBottom: 20, fontSize: 15 },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
-  label: { display: 'block', color: 'var(--grey)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
-  input: { width: '100%', background: 'var(--bg-light)', border: '1px solid #3A2200', borderRadius: 8, padding: '9px 12px', color: 'var(--white)' },
-  fileInput: { color: 'var(--grey)', fontSize: 13 },
-  imgPreview: { width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', marginTop: 6 },
-  checkGroup: { display: 'flex', flexWrap: 'wrap', gap: 10 },
-  checkLabel: { display: 'flex', alignItems: 'center', gap: 5, color: 'var(--white)', fontSize: 13, cursor: 'pointer' },
-  formActions: { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 },
-  cancelBtn: { background: 'transparent', border: '1px solid #3A2200', color: 'var(--grey)', padding: '9px 18px', borderRadius: 8, fontSize: 13 },
-  saveBtn: { background: 'var(--gold)', color: '#0D0500', fontWeight: 700, padding: '9px 18px', borderRadius: 8, fontSize: 13 },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 },
-  card: { background: 'var(--bg-card)', border: '1px solid #2A1200', borderRadius: 12, padding: 16 },
-  cardTop: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 },
-  avatar: { width: 52, height: 52, borderRadius: '50%', background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 },
-  avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  name: { color: 'var(--white)', fontWeight: 600, fontSize: 14 },
-  verified: { color: 'var(--gold)', marginLeft: 5, fontSize: 12 },
-  meta: { color: 'var(--grey)', fontSize: 12, marginTop: 2 },
-  bio: { color: 'var(--grey)', fontSize: 12, lineHeight: 1.5, marginBottom: 10 },
-  tags: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  tag: { background: 'var(--bg-light)', color: 'var(--grey)', padding: '2px 8px', borderRadius: 4, fontSize: 11 },
-  cardActions: { display: 'flex', gap: 8, marginTop: 8 },
-  editBtn: { flex: 1, background: 'var(--bg-light)', color: 'var(--gold)', border: '1px solid var(--gold)', padding: '6px', borderRadius: 6, fontSize: 12 },
-  deleteBtn: { flex: 1, background: 'transparent', color: 'var(--red)', border: '1px solid var(--red)', padding: '6px', borderRadius: 6, fontSize: 12 },
+function ReciterCard({ r, onEdit, onDelete }) {
+  return (
+    <div style={card}
+      onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(212,168,67,.3)'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--divider)'}
+    >
+      {/* Top accent */}
+      <div style={{ height: 2, background: 'linear-gradient(to right, var(--emerald), transparent)', borderRadius: '2px 2px 0 0' }} />
+
+      <div style={{ padding: '16px 16px 14px' }}>
+        {/* Avatar + name */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <div style={avatarWrap}>
+            {r.image_url
+              ? <img src={r.image_url} alt={r.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--grey-dark)" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            }
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: 'var(--white)', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</span>
+              {r.is_verified && (
+                <span style={{ background: 'rgba(212,168,67,.15)', color: 'var(--gold)', border: '1px solid rgba(212,168,67,.3)', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>✓ Verified</span>
+              )}
+            </div>
+            <div style={{ color: 'var(--grey-dark)', fontSize: 12, marginTop: 2 }}>{r.total_tracks} tracks</div>
+          </div>
+        </div>
+
+        {/* Bio */}
+        {r.bio && <p style={{ color: 'var(--grey)', fontSize: 12, lineHeight: 1.6, marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.bio}</p>}
+
+        {/* Category tags */}
+        {r.categories?.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+            {r.categories.map(c => {
+              const cm = CAT_COLORS[c] || {};
+              return <span key={c} style={{ background: cm.bg, color: cm.color, border: `1px solid ${cm.border}`, padding: '2px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>{c}</span>;
+            })}
+          </div>
+        )}
+
+        {/* Language tags */}
+        {r.languages?.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 14 }}>
+            {r.languages.map(l => (
+              <span key={l} style={{ background: 'var(--bg-surface)', color: 'var(--grey)', border: '1px solid var(--divider)', padding: '2px 8px', borderRadius: 4, fontSize: 10 }}>{l}</span>
+            ))}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="tbl-btn tbl-btn-edit" style={{ flex: 1, textAlign: 'center' }} onClick={() => onEdit(r)}>Edit</button>
+          <button className="tbl-btn tbl-btn-delete" style={{ flex: 1, textAlign: 'center' }} onClick={() => onDelete(r.id)}>Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GridSkeleton() {
+  return (
+    <div style={grid}>
+      {[1,2,3,4,5,6].map(i => (
+        <div key={i} style={{ ...card, height: 200, animation: 'pulse 1.5s ease-in-out infinite' }} />
+      ))}
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
+    </div>
+  );
+}
+
+const grid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+  gap: 14,
+};
+
+const card = {
+  background: 'var(--bg-card)',
+  border: '1px solid var(--divider)',
+  borderRadius: 16,
+  overflow: 'hidden',
+  transition: 'border-color .2s, transform .2s',
+};
+
+const avatarWrap = {
+  width: 52,
+  height: 52,
+  borderRadius: '50%',
+  background: 'var(--bg-surface)',
+  border: '2px solid var(--divider)',
+  overflow: 'hidden',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
 };

@@ -7,10 +7,7 @@ export default function Users() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    client.get('/users')
-      .then(res => setUsers(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    client.get('/users').then(r => setUsers(r.data)).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   const filtered = users.filter(u =>
@@ -19,59 +16,161 @@ export default function Users() {
   );
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
+    <div className="page-wrapper">
+      <div className="page-header">
         <div>
-          <h2 style={styles.title}>Users</h2>
-          <p style={styles.subtitle}>{users.length} registered users</p>
+          <h2 className="page-title">Users</h2>
+          <p className="page-subtitle">{users.length} registered users</p>
         </div>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search users..." style={styles.searchInput} />
+        {/* Search */}
+        <div style={searchWrap}>
+          <svg width="15" height="15" style={searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Naam ya email se dhundhein..."
+            style={searchInput}
+          />
+        </div>
       </div>
 
-      {loading ? <p style={{ color: 'var(--grey)' }}>Loading...</p> : (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              {['User', 'Email', 'Favorites', 'Recently Played'].map(h => (
-                <th key={h} style={styles.th}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr><td colSpan={4} style={{ ...styles.td, textAlign: 'center', color: 'var(--grey)' }}>Koi user nahi</td></tr>
-            )}
-            {filtered.map(user => (
-              <tr key={user.id} style={styles.tr}>
-                <td style={styles.td}>
-                  <div style={styles.userCell}>
-                    <div style={styles.avatar}>{user.name?.[0]?.toUpperCase() || '?'}</div>
-                    <span style={{ color: 'var(--white)', fontWeight: 600 }}>{user.name || 'N/A'}</span>
-                  </div>
-                </td>
-                <td style={styles.td}>{user.email}</td>
-                <td style={styles.td}><span style={styles.badge}>{(user.favorites || []).length}</span></td>
-                <td style={styles.td}><span style={styles.badge}>{(user.recently_played || []).length}</span></td>
+      {/* Stats bar */}
+      <div style={statsRow}>
+        <StatPill label="Total" value={users.length} color="var(--gold)" bg="rgba(212,168,67,.1)" border="rgba(212,168,67,.25)" />
+        <StatPill label="Filtered" value={filtered.length} color="var(--emerald-light)" bg="rgba(22,163,74,.1)" border="rgba(22,163,74,.25)" />
+      </div>
+
+      {loading ? (
+        <TableSkeleton />
+      ) : (
+        <div className="data-table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                {['#', 'User', 'Email', 'Favorites', 'Recently Played'].map(h => (
+                  <th key={h}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--grey)', padding: 40 }}>Koi user nahi mila</td></tr>
+              )}
+              {filtered.map((user, idx) => (
+                <tr key={user.id}>
+                  <td style={{ color: 'var(--grey-dark)', fontWeight: 700, fontSize: 12 }}>{idx + 1}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={avatarStyle}>
+                        {user.name?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <span style={{ color: 'var(--white)', fontWeight: 600, fontSize: 13 }}>
+                        {user.name || 'N/A'}
+                      </span>
+                    </div>
+                  </td>
+                  <td style={{ fontSize: 13 }}>{user.email}</td>
+                  <td>
+                    <span style={favBadge}>{(user.favorites || []).length} saved</span>
+                  </td>
+                  <td>
+                    <span style={playBadge}>{(user.recently_played || []).length} played</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 }
 
-const styles = {
-  page: { padding: '28px 32px', maxWidth: 860 },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-  title: { color: 'var(--white)', fontSize: 22, fontWeight: 700 },
-  subtitle: { color: 'var(--grey)', fontSize: 13, marginTop: 4 },
-  searchInput: { background: 'var(--bg-card)', border: '1px solid #2A1200', borderRadius: 8, padding: '9px 14px', color: 'var(--white)', width: 220 },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  th: { textAlign: 'left', color: 'var(--grey)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, padding: '10px 12px', borderBottom: '1px solid #2A1200' },
-  tr: { borderBottom: '1px solid #1C0A00' },
-  td: { padding: '12px', color: 'var(--grey)', verticalAlign: 'middle' },
-  userCell: { display: 'flex', alignItems: 'center', gap: 10 },
-  avatar: { width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold)', fontWeight: 700, fontSize: 15 },
-  badge: { background: 'var(--bg-light)', color: 'var(--gold)', padding: '3px 10px', borderRadius: 4, fontSize: 12, fontWeight: 600 },
+function StatPill({ label, value, color, bg, border }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: bg, border: `1px solid ${border}`, borderRadius: 20, padding: '6px 14px' }}>
+      <span style={{ color, fontWeight: 800, fontSize: 16 }}>{value}</span>
+      <span style={{ color: 'var(--grey)', fontSize: 12 }}>{label}</span>
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {[1,2,3,4,5].map(i => (
+        <div key={i} style={{ height: 56, background: 'var(--bg-card)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite', border: '1px solid var(--divider)' }} />
+      ))}
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
+    </div>
+  );
+}
+
+const searchWrap = {
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+  flex: '0 0 auto',
+};
+
+const searchIcon = {
+  position: 'absolute',
+  left: 12,
+  color: 'var(--grey-dark)',
+  pointerEvents: 'none',
+};
+
+const searchInput = {
+  background: 'var(--bg-card)',
+  border: '1px solid var(--divider)',
+  borderRadius: 10,
+  padding: '9px 14px 9px 36px',
+  color: 'var(--white)',
+  width: 240,
+  fontSize: 13,
+  transition: 'border-color .15s',
+};
+
+const statsRow = {
+  display: 'flex',
+  gap: 10,
+  marginBottom: 20,
+  flexWrap: 'wrap',
+};
+
+const avatarStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: '50%',
+  background: 'linear-gradient(135deg, rgba(212,168,67,.2), rgba(212,168,67,.05))',
+  border: '1px solid rgba(212,168,67,.3)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: 'var(--gold)',
+  fontWeight: 800,
+  fontSize: 14,
+  flexShrink: 0,
+};
+
+const favBadge = {
+  background: 'rgba(239,68,68,.08)',
+  color: 'var(--red)',
+  border: '1px solid rgba(239,68,68,.2)',
+  padding: '3px 10px',
+  borderRadius: 20,
+  fontSize: 11,
+  fontWeight: 700,
+};
+
+const playBadge = {
+  background: 'rgba(22,163,74,.08)',
+  color: 'var(--emerald-light)',
+  border: '1px solid rgba(22,163,74,.2)',
+  padding: '3px 10px',
+  borderRadius: 20,
+  fontSize: 11,
+  fontWeight: 700,
 };

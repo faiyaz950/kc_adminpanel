@@ -19,10 +19,7 @@ export default function Anjumans() {
 
   const fetchAnjumans = () => {
     setLoading(true);
-    client.get('/anjumans')
-      .then(r => setAnjumans(r.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    client.get('/anjumans').then(r => setAnjumans(r.data)).catch(console.error).finally(() => setLoading(false));
   };
 
   const handleSubmit = async (e) => {
@@ -30,16 +27,13 @@ export default function Anjumans() {
     setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
-      fd.append('name', form.name);
-      fd.append('city', form.city);
-      fd.append('bio', form.bio || '');
-      fd.append('is_verified', form.is_verified ? '1' : '0');
+      fd.append('name', form.name); fd.append('city', form.city);
+      fd.append('bio', form.bio || ''); fd.append('is_verified', form.is_verified ? '1' : '0');
       if (imageFile) fd.append('image', imageFile);
       const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
       if (editId) await client.post(`/anjumans/${editId}`, fd, opts);
       else await client.post('/anjumans', fd, opts);
-      resetForm();
-      fetchAnjumans();
+      resetForm(); fetchAnjumans();
     } catch (err) {
       setSaveError(err.response?.data?.message || 'Error saving.');
     } finally { setSaving(false); }
@@ -48,6 +42,7 @@ export default function Anjumans() {
   const handleEdit = (a) => {
     setForm({ name: a.name, city: a.city, bio: a.bio || '', is_verified: a.is_verified });
     setEditId(a.id); setImageFile(null); setShowForm(true); setSaveError('');
+    window.scrollTo(0, 0);
   };
 
   const handleDelete = async (id) => {
@@ -57,107 +52,117 @@ export default function Anjumans() {
     if (selectedAnjuman?.id === id) setSelectedAnjuman(null);
   };
 
-  const resetForm = () => {
-    setForm(emptyForm); setEditId(null); setImageFile(null); setShowForm(false);
-  };
+  const resetForm = () => { setForm(emptyForm); setEditId(null); setImageFile(null); setShowForm(false); setSaveError(''); };
 
   if (selectedAnjuman) {
-    return (
-      <AnjumanTracks
-        anjuman={selectedAnjuman}
-        onBack={() => { setSelectedAnjuman(null); fetchAnjumans(); }}
-      />
-    );
+    return <AnjumanTracks anjuman={selectedAnjuman} onBack={() => { setSelectedAnjuman(null); fetchAnjumans(); }} />;
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
+    <div className="page-wrapper">
+      <div className="page-header">
         <div>
-          <h1 style={styles.title}>Anjumans</h1>
-          <p style={styles.subtitle}>City-wise anjumans manage karein</p>
+          <h2 className="page-title">Anjumans</h2>
+          <p className="page-subtitle">City-wise anjumans manage karein</p>
         </div>
-        <button style={styles.addBtn} onClick={() => { resetForm(); setShowForm(true); }}>
-          + Anjuman Add Karein
+        <button className="btn-primary" onClick={() => { resetForm(); setShowForm(p => !p); }}>
+          {showForm ? '✕ Cancel' : '+ Anjuman Add Karein'}
         </button>
       </div>
 
       {showForm && (
-        <div style={styles.formCard}>
-          <h2 style={styles.formTitle}>{editId ? 'Anjuman Edit' : 'Naya Anjuman'}</h2>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <div style={styles.row}>
-              <div style={styles.field}>
-                <label style={styles.label}>Anjuman Ka Naam *</label>
-                <input style={styles.input} value={form.name}
-                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
+        <div className="form-card" style={{ marginBottom: 24 }}>
+          <div className="section-title-row" style={{ marginBottom: 22 }}>
+            <div className="accent-bar" />
+            <h3 className="section-title">{editId ? 'Anjuman Edit Karein' : 'Naya Anjuman'}</h3>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="form-grid-2">
+              <div>
+                <label className="form-label">Anjuman Ka Naam *</label>
+                <input className="form-input" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
               </div>
-              <div style={styles.field}>
-                <label style={styles.label}>City *</label>
-                <input style={styles.input} placeholder="e.g. Karachi, Lahore"
-                  value={form.city}
-                  onChange={e => setForm(p => ({ ...p, city: e.target.value }))} required />
+              <div>
+                <label className="form-label">City *</label>
+                <input className="form-input" placeholder="e.g. Karachi, Lahore" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} required />
               </div>
-            </div>
-            <div style={styles.field}>
-              <label style={styles.label}>Bio</label>
-              <textarea style={{ ...styles.input, height: 80, resize: 'vertical' }}
-                value={form.bio}
-                onChange={e => setForm(p => ({ ...p, bio: e.target.value }))} />
-            </div>
-            <div style={styles.row}>
-              <div style={styles.field}>
-                <label style={styles.label}>Image (optional)</label>
-                <input type="file" accept="image/*" style={styles.input}
-                  onChange={e => setImageFile(e.target.files[0])} />
+              <div style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">Bio (optional)</label>
+                <textarea className="form-input" style={{ height: 80, resize: 'vertical' }} value={form.bio} onChange={e => setForm(p => ({ ...p, bio: e.target.value }))} />
               </div>
-              <div style={{ ...styles.field, justifyContent: 'center' }}>
-                <label style={{ ...styles.label, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={form.is_verified}
-                    onChange={e => setForm(p => ({ ...p, is_verified: e.target.checked }))} />
+              <div>
+                <label className="form-label">Cover Image</label>
+                <input type="file" accept="image/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }} onChange={e => setImageFile(e.target.files[0])} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', paddingTop: 28 }}>
+                <button type="button"
+                  onClick={() => setForm(p => ({ ...p, is_verified: !p.is_verified }))}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    background: form.is_verified ? 'rgba(22,163,74,.12)' : 'var(--bg-surface)',
+                    border: `1px solid ${form.is_verified ? 'rgba(22,163,74,.4)' : 'var(--divider)'}`,
+                    color: form.is_verified ? 'var(--emerald-light)' : 'var(--grey)',
+                    borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600,
+                    transition: 'all .15s', width: '100%',
+                  }}>
+                  <span style={{ fontSize: 16 }}>{form.is_verified ? '✅' : '⬜'}</span>
                   Verified Anjuman
-                </label>
+                </button>
               </div>
             </div>
-            {saveError && <p style={styles.error}>{saveError}</p>}
-            <div style={styles.btnRow}>
-              <button type="button" style={styles.cancelBtn} onClick={resetForm}>Cancel</button>
-              <button type="submit" style={styles.saveBtn} disabled={saving}>
-                {saving ? 'Saving...' : (editId ? 'Update' : 'Add Anjuman')}
-              </button>
+            {saveError && <div className="err-banner" style={{ marginTop: 16 }}>{saveError}</div>}
+            <div className="form-actions">
+              <button type="button" className="btn-cancel" onClick={resetForm}>Cancel</button>
+              <button type="submit" className="btn-save" disabled={saving}>{saving ? 'Saving...' : editId ? 'Update' : 'Add Anjuman'}</button>
             </div>
           </form>
         </div>
       )}
 
       {loading ? (
-        <p style={{ color: 'var(--grey)' }}>Loading...</p>
+        <GridSkeleton />
       ) : anjumans.length === 0 ? (
-        <p style={{ color: 'var(--grey)' }}>Koi anjuman nahi mila.</p>
+        <EmptyState text="Koi anjuman nahi mili. Oopar se add karein." />
       ) : (
-        <div style={styles.grid}>
+        <div style={grid}>
           {anjumans.map(a => (
-            <div key={a.id} style={styles.card}>
-              <div style={styles.cardImg}>
+            <div key={a.id} style={card}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(212,168,67,.25)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--divider)'; e.currentTarget.style.transform = 'none'; }}
+            >
+              {/* Cover image */}
+              <div style={coverImg}>
                 {a.image_url
                   ? <img src={a.image_url} alt={a.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: 36 }}>🕌</span>}
+                  : <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--grey-dark)" strokeWidth="1.5">
+                      <path d="M3 22h18M9 22V8l3-6 3 6v14M5 22V12l-2-2M19 22V12l2-2"/>
+                      <line x1="9" y1="11" x2="15" y2="11"/>
+                    </svg>
+                }
+                <div style={coverOverlay} />
+                {a.is_verified && (
+                  <div style={verifiedBadge}>✓ Verified</div>
+                )}
               </div>
-              <div style={styles.cardBody}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={styles.cardName}>{a.name}</span>
-                  {a.is_verified && <span style={styles.badge}>✓</span>}
+
+              <div style={{ padding: '14px 14px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                  <span style={{ color: 'var(--white)', fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{a.name}</span>
                 </div>
-                <span style={styles.cityTag}>📍 {a.city}</span>
-                <span style={styles.tracksCount}>{a.total_tracks} tracks</span>
-                {a.bio && <p style={styles.bio}>{a.bio}</p>}
-              </div>
-              <div style={styles.cardActions}>
-                <button style={styles.tracksBtn} onClick={() => setSelectedAnjuman(a)}>
-                  🎵 Tracks
-                </button>
-                <button style={styles.editBtn} onClick={() => handleEdit(a)}>Edit</button>
-                <button style={styles.deleteBtn} onClick={() => handleDelete(a.id)}>Delete</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <span style={{ color: 'var(--gold)', fontSize: 12 }}>📍 {a.city}</span>
+                  <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>·</span>
+                  <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>{a.total_tracks} tracks</span>
+                </div>
+                {a.bio && <p style={{ color: 'var(--grey)', fontSize: 12, lineHeight: 1.5, marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{a.bio}</p>}
+
+                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  <button style={tracksBtn} onClick={() => setSelectedAnjuman(a)}>
+                    🎵 Tracks
+                  </button>
+                  <button className="tbl-btn tbl-btn-edit" style={{ flex: 0, padding: '5px 12px' }} onClick={() => handleEdit(a)}>Edit</button>
+                  <button className="tbl-btn tbl-btn-delete" style={{ flex: 0, padding: '5px 12px' }} onClick={() => handleDelete(a.id)}>Del</button>
+                </div>
               </div>
             </div>
           ))}
@@ -184,15 +189,7 @@ function AnjumanTracks({ anjuman, onBack }) {
 
   const fetchTracks = () => {
     setLoading(true);
-    client.get(`/anjumans/${anjuman.id}/tracks`)
-      .then(r => setTracks(r.data))
-      .finally(() => setLoading(false));
-  };
-
-  const handleAudioChange = (e) => {
-    const file = e.target.files[0];
-    setAudioFile(file);
-    if (file) setAudioPreview(URL.createObjectURL(file));
+    client.get(`/anjumans/${anjuman.id}/tracks`).then(r => setTracks(r.data)).finally(() => setLoading(false));
   };
 
   const handleSubmit = async (e) => {
@@ -201,13 +198,11 @@ function AnjumanTracks({ anjuman, onBack }) {
     setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
-      fd.append('title', title);
-      fd.append('occasion', occasion);
+      fd.append('title', title); fd.append('occasion', occasion);
       fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
       await client.post(`/anjumans/${anjuman.id}/tracks`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setTitle(''); setOccasion(''); setAudioFile(null); setImageFile(null);
-      setAudioPreview(null); setShowForm(false);
+      setTitle(''); setOccasion(''); setAudioFile(null); setImageFile(null); setAudioPreview(null); setShowForm(false);
       fetchTracks();
     } catch (err) {
       setSaveError(err.response?.data?.message || 'Upload failed.');
@@ -216,153 +211,196 @@ function AnjumanTracks({ anjuman, onBack }) {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Track delete karein?')) return;
-    await client.delete(`/anjuman-tracks/${id}`);
-    fetchTracks();
-  };
-
-  const togglePlay = (url) => {
-    if (playing === url) { setPlaying(null); }
-    else { setPlaying(url); }
+    await client.delete(`/anjuman-tracks/${id}`); fetchTracks();
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
+    <div className="page-wrapper">
+      <div className="page-header">
         <div>
-          <button style={styles.backBtn} onClick={onBack}>← Anjumans</button>
-          <h1 style={styles.title}>{anjuman.name}</h1>
-          <p style={styles.subtitle}>📍 {anjuman.city} · {tracks.length} tracks</p>
+          <button onClick={onBack} style={{ background: 'none', color: 'var(--gold)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, padding: 0 }}>
+            ← Anjumans
+          </button>
+          <h2 className="page-title">{anjuman.name}</h2>
+          <p className="page-subtitle">📍 {anjuman.city} · {tracks.length} tracks</p>
         </div>
-        <button style={styles.addBtn} onClick={() => setShowForm(p => !p)}>
-          + Track Upload
+        <button className="btn-primary" onClick={() => setShowForm(p => !p)}>
+          {showForm ? '✕ Cancel' : '+ Track Upload'}
         </button>
       </div>
 
       {showForm && (
-        <div style={styles.formCard}>
-          <h2 style={styles.formTitle}>Naya Track Upload</h2>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <div style={styles.row}>
-              <div style={styles.field}>
-                <label style={styles.label}>Track Title *</label>
-                <input style={styles.input} value={title}
-                  onChange={e => setTitle(e.target.value)} required />
+        <div className="form-card" style={{ marginBottom: 24 }}>
+          <div className="section-title-row" style={{ marginBottom: 20 }}>
+            <div className="accent-bar" />
+            <h3 className="section-title">Naya Track Upload</h3>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <div className="form-grid-2">
+              <div>
+                <label className="form-label">Track Title *</label>
+                <input className="form-input" value={title} onChange={e => setTitle(e.target.value)} required />
               </div>
-              <div style={styles.field}>
-                <label style={styles.label}>Occasion</label>
-                <select style={styles.input} value={occasion} onChange={e => setOccasion(e.target.value)}>
+              <div>
+                <label className="form-label">Occasion</label>
+                <select className="form-input" value={occasion} onChange={e => setOccasion(e.target.value)}>
                   <option value="">Select...</option>
                   {OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
-            </div>
-            <div style={styles.row}>
-              <div style={styles.field}>
-                <label style={styles.label}>Audio File * (MP3/WAV)</label>
-                <input type="file" accept="audio/*" style={styles.input} onChange={handleAudioChange} required />
-                {audioPreview && (
-                  <audio controls src={audioPreview} style={{ marginTop: 8, width: '100%' }} />
-                )}
+              <div>
+                <label className="form-label">Audio File * (MP3/WAV)</label>
+                <input type="file" accept="audio/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }}
+                  onChange={e => { const f = e.target.files[0]; setAudioFile(f); if (f) setAudioPreview(URL.createObjectURL(f)); }} required />
+                {audioPreview && <audio controls src={audioPreview} style={{ marginTop: 10, width: '100%', height: 36, accentColor: 'var(--gold)' }} />}
               </div>
-              <div style={styles.field}>
-                <label style={styles.label}>Cover Image (optional)</label>
-                <input type="file" accept="image/*" style={styles.input}
-                  onChange={e => setImageFile(e.target.files[0])} />
+              <div>
+                <label className="form-label">Cover Image (optional)</label>
+                <input type="file" accept="image/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }} onChange={e => setImageFile(e.target.files[0])} />
               </div>
             </div>
-            {saveError && <p style={styles.error}>{saveError}</p>}
-            {saving && <p style={{ color: 'var(--gold)', fontSize: 13 }}>Uploading to Cloudinary... please wait</p>}
-            <div style={styles.btnRow}>
-              <button type="button" style={styles.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
-              <button type="submit" style={styles.saveBtn} disabled={saving}>
-                {saving ? 'Uploading...' : 'Upload Track'}
-              </button>
+            {saveError && <div className="err-banner" style={{ marginTop: 16 }}>{saveError}</div>}
+            {saving && <p style={{ color: 'var(--emerald-light)', fontSize: 13, marginTop: 12 }}>⬆ Uploading to Cloudinary... please wait</p>}
+            <div className="form-actions">
+              <button type="button" className="btn-cancel" onClick={() => setShowForm(false)}>Cancel</button>
+              <button type="submit" className="btn-save" disabled={saving}>{saving ? 'Uploading...' : 'Upload Track'}</button>
             </div>
           </form>
         </div>
       )}
 
-      {playing && (
-        <audio autoPlay src={playing} onEnded={() => setPlaying(null)} style={{ display: 'none' }} />
-      )}
+      {playing && <audio autoPlay src={playing} onEnded={() => setPlaying(null)} style={{ display: 'none' }} />}
 
-      {loading ? (
-        <p style={{ color: 'var(--grey)' }}>Loading...</p>
-      ) : tracks.length === 0 ? (
-        <p style={{ color: 'var(--grey)' }}>Koi track nahi. Upload karein.</p>
+      {loading ? <TableSkeleton /> : tracks.length === 0 ? (
+        <EmptyState text="Koi track nahi. Oopar se upload karein." />
       ) : (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              {['#', 'Title', 'Occasion', 'Duration', 'Plays', 'Preview', 'Actions'].map(h => (
-                <th key={h} style={styles.th}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {tracks.map((t, i) => (
-              <tr key={t.id} style={styles.tr}>
-                <td style={styles.td}>{i + 1}</td>
-                <td style={styles.td}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {t.image_url && <img src={t.image_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} />}
-                    <span style={{ color: '#fff', fontWeight: 500 }}>{t.title}</span>
-                  </div>
-                </td>
-                <td style={styles.td}>{t.occasion || '—'}</td>
-                <td style={styles.td}>{t.duration || '—'}</td>
-                <td style={styles.td}>{t.play_count}</td>
-                <td style={styles.td}>
-                  <button style={styles.playBtn} onClick={() => togglePlay(t.audio_url)}>
-                    {playing === t.audio_url ? '■ Stop' : '▶ Play'}
-                  </button>
-                </td>
-                <td style={styles.td}>
-                  <button style={styles.deleteBtn} onClick={() => handleDelete(t.id)}>Delete</button>
-                </td>
+        <div className="data-table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                {['#', 'Cover + Title', 'Occasion', 'Duration', 'Plays', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tracks.map((t, i) => (
+                <tr key={t.id}>
+                  <td style={{ color: 'var(--grey-dark)', fontWeight: 700 }}>{i + 1}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {t.image_url
+                        ? <img src={t.image_url} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
+                        : <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--grey-dark)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                          </div>
+                      }
+                      <span style={{ color: 'var(--white)', fontWeight: 600, fontSize: 13 }}>{t.title}</span>
+                    </div>
+                  </td>
+                  <td style={{ fontSize: 12 }}>{t.occasion || '—'}</td>
+                  <td style={{ fontSize: 12 }}>{t.duration || '—'}</td>
+                  <td>
+                    <span style={{ background: 'rgba(22,163,74,.1)', color: 'var(--emerald-light)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{t.play_count}</span>
+                  </td>
+                  <td>
+                    <button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>
+                      {playing === t.audio_url ? '■ Stop' : '▶ Play'}
+                    </button>
+                  </td>
+                  <td>
+                    <button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 }
 
-const styles = {
-  page: { padding: 32, maxWidth: 1100, margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 },
-  title: { color: '#fff', fontSize: 24, fontWeight: 700, margin: '4px 0' },
-  subtitle: { color: 'var(--grey)', fontSize: 13, margin: 0 },
-  addBtn: { background: 'var(--gold)', color: '#000', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 700, fontSize: 13, cursor: 'pointer' },
-  backBtn: { background: 'none', border: 'none', color: 'var(--gold)', cursor: 'pointer', fontSize: 13, padding: 0, marginBottom: 8 },
-  formCard: { background: 'var(--bg-card)', border: '1px solid #2a1200', borderRadius: 12, padding: 24, marginBottom: 24 },
-  formTitle: { color: '#fff', fontSize: 16, fontWeight: 700, marginBottom: 16, marginTop: 0 },
-  form: { display: 'flex', flexDirection: 'column', gap: 14 },
-  row: { display: 'flex', gap: 14 },
-  field: { flex: 1, display: 'flex', flexDirection: 'column', gap: 6 },
-  label: { color: 'var(--grey)', fontSize: 12, fontWeight: 600 },
-  input: { background: 'var(--bg-dark)', border: '1px solid #333', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 13, width: '100%', boxSizing: 'border-box' },
-  error: { color: 'var(--red)', fontSize: 13, margin: 0 },
-  btnRow: { display: 'flex', gap: 10, justifyContent: 'flex-end' },
-  cancelBtn: { background: 'none', border: '1px solid #444', borderRadius: 8, padding: '8px 16px', color: 'var(--grey)', cursor: 'pointer', fontSize: 13 },
-  saveBtn: { background: 'var(--gold)', color: '#000', border: 'none', borderRadius: 8, padding: '8px 20px', fontWeight: 700, fontSize: 13, cursor: 'pointer' },
-  badge: { background: '#1DB95420', color: '#1DB954', border: '1px solid #1DB95440', borderRadius: 10, padding: '1px 6px', fontSize: 11 },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 },
-  card: { background: 'var(--bg-card)', border: '1px solid #2a1200', borderRadius: 12, overflow: 'hidden' },
-  cardImg: { width: '100%', height: 120, background: '#1a0800', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  cardBody: { padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4 },
-  cardName: { color: '#fff', fontWeight: 700, fontSize: 14 },
-  cityTag: { color: 'var(--gold)', fontSize: 12 },
-  tracksCount: { color: 'var(--grey)', fontSize: 11 },
-  bio: { color: 'var(--grey)', fontSize: 12, marginTop: 4, lineHeight: 1.5 },
-  cardActions: { padding: '8px 14px 12px', display: 'flex', gap: 8 },
-  tracksBtn: { background: 'var(--gold)', color: '#000', border: 'none', borderRadius: 6, padding: '5px 10px', fontWeight: 700, fontSize: 12, cursor: 'pointer', flex: 1 },
-  editBtn: { background: '#1DB95420', color: '#1DB954', border: '1px solid #1DB95440', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer' },
-  deleteBtn: { background: 'var(--red)20', color: 'var(--red)', border: '1px solid var(--red)40', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer' },
-  table: { width: '100%', borderCollapse: 'collapse', background: 'var(--bg-card)', borderRadius: 12, overflow: 'hidden' },
-  th: { textAlign: 'left', padding: '12px 14px', color: 'var(--grey)', fontSize: 12, fontWeight: 600, borderBottom: '1px solid #222' },
-  tr: { borderBottom: '1px solid #1a1a1a' },
-  td: { padding: '12px 14px', color: 'var(--grey)', fontSize: 13 },
-  playBtn: { background: '#1DB95420', color: '#1DB954', border: '1px solid #1DB95440', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer' },
+function EmptyState({ text }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+      <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--bg-card)', border: '1px solid var(--divider)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--grey-dark)" strokeWidth="1.5">
+          <path d="M3 22h18M9 22V8l3-6 3 6v14M5 22V12l-2-2M19 22V12l2-2"/>
+        </svg>
+      </div>
+      <p style={{ color: 'var(--grey)', fontSize: 14 }}>{text}</p>
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {[1,2,3].map(i => <div key={i} style={{ height: 52, background: 'var(--bg-card)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite', border: '1px solid var(--divider)' }} />)}
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
+    </div>
+  );
+}
+
+function GridSkeleton() {
+  return (
+    <div style={grid}>
+      {[1,2,3,4,5,6].map(i => <div key={i} style={{ ...card, height: 220, animation: 'pulse 1.5s ease-in-out infinite' }} />)}
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
+    </div>
+  );
+}
+
+const grid = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+  gap: 14,
+};
+
+const card = {
+  background: 'var(--bg-card)',
+  border: '1px solid var(--divider)',
+  borderRadius: 16,
+  overflow: 'hidden',
+  transition: 'border-color .2s, transform .2s',
+};
+
+const coverImg = {
+  width: '100%',
+  height: 115,
+  background: 'var(--bg-surface)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  position: 'relative',
+  overflow: 'hidden',
+};
+
+const coverOverlay = {
+  position: 'absolute',
+  inset: 0,
+  background: 'linear-gradient(to top, rgba(4,12,6,.7), transparent)',
+};
+
+const verifiedBadge = {
+  position: 'absolute',
+  top: 8, right: 8,
+  background: 'rgba(212,168,67,.9)',
+  color: '#000',
+  fontSize: 10,
+  fontWeight: 700,
+  padding: '3px 8px',
+  borderRadius: 20,
+};
+
+const tracksBtn = {
+  flex: 1,
+  background: 'linear-gradient(135deg, rgba(212,168,67,.2), rgba(212,168,67,.08))',
+  color: 'var(--gold)',
+  border: '1px solid rgba(212,168,67,.3)',
+  borderRadius: 8,
+  padding: '6px 10px',
+  fontWeight: 700,
+  fontSize: 12,
+  cursor: 'pointer',
+  transition: 'opacity .15s',
 };
