@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 
-const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat'];
+const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids'];
 const LANGUAGES = ['Arabic', 'Urdu', 'Punjabi', 'Hindi', 'Farsi', 'English'];
 const CAT_COLORS = {
   dua:      { color: '#06B6D4', bg: 'rgba(6,182,212,.12)',   border: 'rgba(6,182,212,.3)'   },
   noha:     { color: '#EF4444', bg: 'rgba(239,68,68,.12)',   border: 'rgba(239,68,68,.3)'   },
-  manqabat: { color: '#8B5CF6', bg: 'rgba(139,92,246,.12)', border: 'rgba(139,92,246,.3)' },
+  manqabat: { color: '#8B5CF6', bg: 'rgba(139,92,246,.12)', border: 'rgba(139,92,246,.3)'  },
   naat:     { color: '#F97316', bg: 'rgba(249,115,22,.12)',  border: 'rgba(249,115,22,.3)'  },
+  ziyarat:  { color: '#10B981', bg: 'rgba(16,185,129,.12)',  border: 'rgba(16,185,129,.3)'  },
+  kids:     { color: '#F59E0B', bg: 'rgba(245,158,11,.12)',  border: 'rgba(245,158,11,.3)'  },
 };
 const emptyForm = { name: '', bio: '', categories: [], languages: [], total_tracks: 0, is_verified: false };
 

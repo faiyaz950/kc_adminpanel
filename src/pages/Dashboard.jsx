@@ -15,8 +15,10 @@ const UsersIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="
 const CAT_META = {
   dua:      { label: 'Duas',      color: '#06B6D4', bg: 'rgba(6,182,212,.1)',   border: 'rgba(6,182,212,.25)',   icon: '🤲' },
   noha:     { label: 'Nauhe',     color: '#EF4444', bg: 'rgba(239,68,68,.1)',   border: 'rgba(239,68,68,.25)',   icon: '💧' },
-  manqabat: { label: 'Manqabat',  color: '#8B5CF6', bg: 'rgba(139,92,246,.1)', border: 'rgba(139,92,246,.25)', icon: '✨' },
+  manqabat: { label: 'Manqabat',  color: '#8B5CF6', bg: 'rgba(139,92,246,.1)', border: 'rgba(139,92,246,.25)',  icon: '✨' },
   naat:     { label: 'Naats',     color: '#F97316', bg: 'rgba(249,115,22,.1)',  border: 'rgba(249,115,22,.25)',  icon: '🎵' },
+  ziyarat:  { label: 'Ziyarat',   color: '#10B981', bg: 'rgba(16,185,129,.1)', border: 'rgba(16,185,129,.25)',  icon: '🕌' },
+  kids:     { label: 'Kids',      color: '#F59E0B', bg: 'rgba(245,158,11,.1)',  border: 'rgba(245,158,11,.25)',  icon: '🌟' },
 };
 
 const QUICK = [
