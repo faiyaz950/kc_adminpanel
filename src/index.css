@@ -144,6 +144,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; outline: none; 
   grid-template-columns: 1fr 1fr;
   gap: 18px;
 }
+.form-field-full { grid-column: span 2; }
 .form-label {
   display: block;
   color: var(--grey);
@@ -253,6 +254,94 @@ input, select, textarea { font-family: inherit; font-size: 14px; outline: none; 
   margin-bottom: 18px;
   flex-wrap: wrap;
 }
+
+/* Tracks — desktop table vs mobile cards */
+.tracks-desktop { display: block; }
+.tracks-mobile  { display: none; }
+
+.track-card {
+  background: var(--bg-card);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  transition: border-color .2s;
+}
+.track-card:hover { border-color: rgba(212,168,67,.25); }
+
+.track-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.track-card-cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.track-card-cover-placeholder {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.track-card-body { flex: 1; min-width: 0; }
+
+.track-card-title {
+  color: var(--white);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.track-card-meta {
+  color: var(--grey-light);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.track-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.track-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.track-card-actions .tbl-btn {
+  flex: 1 1 calc(50% - 4px);
+  text-align: center;
+  padding: 8px 10px;
+  margin-right: 0;
+}
+
+.track-card-audio {
+  width: 100%;
+  height: 38px;
+  margin-top: 12px;
+  accent-color: var(--gold);
+  border-radius: 8px;
+}
+
+.track-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .filter-chip {
   padding: 6px 16px;
   border-radius: 20px;
@@ -293,6 +382,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; outline: none; 
 /* ─── Responsive ──────────────────────────────────── */
 @media (max-width: 900px) {
   .form-grid-2 { grid-template-columns: 1fr; }
+  .form-field-full { grid-column: span 1; }
 }
 
 @media (max-width: 768px) {
@@ -302,8 +392,26 @@ input, select, textarea { font-family: inherit; font-size: 14px; outline: none; 
 
   .page-wrapper { padding: 20px 16px; }
 
+  .page-title { font-size: 20px; }
+
   .data-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
   .page-header { flex-direction: column; align-items: stretch; }
-  .page-header > *:last-child { align-self: flex-start; }
+  .page-header .btn-primary { width: 100%; text-align: center; }
+
+  .form-card { padding: 20px 16px; }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .form-actions .btn-cancel,
+  .form-actions .btn-save {
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+  }
+
+  .tracks-desktop { display: none; }
+  .tracks-mobile  { display: block; }
 }

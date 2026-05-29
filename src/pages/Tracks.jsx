@@ -202,76 +202,55 @@ export default function Tracks() {
         })}
       </div>
 
-      {/* Table */}
+      {/* Track list */}
       {loading ? (
-        <TableSkeleton cols={8} />
+        <>
+          <div className="tracks-desktop"><TableSkeleton cols={8} /></div>
+          <div className="tracks-mobile"><CardSkeleton /></div>
+        </>
+      ) : tracks.length === 0 ? (
+        <p style={{ color: 'var(--grey)', textAlign: 'center', padding: '40px 0' }}>Koi track nahi mila</p>
       ) : (
-        <div className="data-table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                {['Cover', 'Title', 'Category', 'Reciter', 'Language', 'Featured', 'Preview', 'Actions'].map(h => (
-                  <th key={h}>{h}</th>
+        <>
+          {/* Desktop table */}
+          <div className="tracks-desktop data-table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  {['Cover', 'Title', 'Category', 'Reciter', 'Language', 'Featured', 'Preview', 'Actions'].map(h => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tracks.map(track => (
+                  <TrackTableRow
+                    key={track.id}
+                    track={track}
+                    previewTrackId={previewTrackId}
+                    setPreviewTrackId={setPreviewTrackId}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tracks.length === 0 && (
-                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--grey)', padding: 40 }}>Koi track nahi mila</td></tr>
-              )}
-              {tracks.map(track => {
-                const cm = CAT_COLORS[track.category] || {};
-                return (
-                  <>
-                    <tr key={track.id}>
-                      <td>
-                        {track.image_url
-                          ? <img src={track.image_url} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} />
-                          : <div style={{ width: 36, height: 36, borderRadius: 8, background: cm.bg || 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={cm.color || 'var(--grey)'} strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-                            </div>
-                        }
-                      </td>
-                      <td><span style={{ color: 'var(--white)', fontWeight: 600, fontSize: 13 }}>{track.title}</span></td>
-                      <td>
-                        <span style={{ background: cm.bg, color: cm.color, border: `1px solid ${cm.border}`, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-                          {track.category}
-                        </span>
-                      </td>
-                      <td style={{ color: 'var(--grey-light)', fontSize: 13 }}>{track.reciter_name || '—'}</td>
-                      <td style={{ fontSize: 13 }}>{track.language || '—'}</td>
-                      <td>
-                        {track.is_featured
-                          ? <span style={{ background: 'rgba(212,168,67,.12)', color: 'var(--gold)', border: '1px solid rgba(212,168,67,.3)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>⭐ Yes</span>
-                          : <span style={{ color: 'var(--grey-dark)', fontSize: 12 }}>No</span>
-                        }
-                      </td>
-                      <td>
-                        {track.audio_url
-                          ? <button className="tbl-btn tbl-btn-play" onClick={() => setPreviewTrackId(previewTrackId === track.id ? null : track.id)}>
-                              {previewTrackId === track.id ? '■ Stop' : '▶ Play'}
-                            </button>
-                          : <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>No audio</span>
-                        }
-                      </td>
-                      <td>
-                        <button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(track)}>Edit</button>
-                        <button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(track.id)}>Delete</button>
-                      </td>
-                    </tr>
-                    {previewTrackId === track.id && (
-                      <tr key={track.id + '_p'}>
-                        <td colSpan={8} style={{ background: 'var(--bg-surface)', padding: '10px 16px' }}>
-                          <audio controls autoPlay src={track.audio_url} style={{ width: '100%', height: 36, accentColor: 'var(--gold)' }} />
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="tracks-mobile track-cards-list">
+            {tracks.map(track => (
+              <TrackCard
+                key={track.id}
+                track={track}
+                previewTrackId={previewTrackId}
+                setPreviewTrackId={setPreviewTrackId}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -279,9 +258,110 @@ export default function Tracks() {
 
 function FormField({ label, children, fullWidth }) {
   return (
-    <div style={{ gridColumn: fullWidth ? 'span 2' : 'span 1' }}>
+    <div className={fullWidth ? 'form-field-full' : undefined}>
       <label className="form-label">{label}</label>
       {children}
+    </div>
+  );
+}
+
+function TrackCover({ track, cm, size = 36 }) {
+  if (track.image_url) {
+    return <img src={track.image_url} alt="" className="track-card-cover" style={{ width: size, height: size, borderRadius: size > 40 ? 10 : 8 }} />;
+  }
+  return (
+    <div className="track-card-cover-placeholder" style={{ width: size, height: size, borderRadius: size > 40 ? 10 : 8, background: cm.bg || 'var(--bg-surface)' }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={cm.color || 'var(--grey)'} strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+  );
+}
+
+function CategoryBadge({ category, cm }) {
+  return (
+    <span style={{ background: cm.bg, color: cm.color, border: `1px solid ${cm.border}`, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+      {category}
+    </span>
+  );
+}
+
+function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete }) {
+  const cm = CAT_COLORS[track.category] || {};
+  return (
+    <>
+      <tr>
+        <td><TrackCover track={track} cm={cm} /></td>
+        <td><span style={{ color: 'var(--white)', fontWeight: 600, fontSize: 13 }}>{track.title}</span></td>
+        <td><CategoryBadge category={track.category} cm={cm} /></td>
+        <td style={{ color: 'var(--grey-light)', fontSize: 13 }}>{track.reciter_name || '—'}</td>
+        <td style={{ fontSize: 13 }}>{track.language || '—'}</td>
+        <td>
+          {track.is_featured
+            ? <span style={{ background: 'rgba(212,168,67,.12)', color: 'var(--gold)', border: '1px solid rgba(212,168,67,.3)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>⭐ Yes</span>
+            : <span style={{ color: 'var(--grey-dark)', fontSize: 12 }}>No</span>
+          }
+        </td>
+        <td>
+          {track.audio_url
+            ? <button type="button" className="tbl-btn tbl-btn-play" onClick={() => setPreviewTrackId(previewTrackId === track.id ? null : track.id)}>
+                {previewTrackId === track.id ? '■ Stop' : '▶ Play'}
+              </button>
+            : <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>No audio</span>
+          }
+        </td>
+        <td>
+          <button type="button" className="tbl-btn tbl-btn-edit" onClick={() => onEdit(track)}>Edit</button>
+          <button type="button" className="tbl-btn tbl-btn-delete" onClick={() => onDelete(track.id)}>Delete</button>
+        </td>
+      </tr>
+      {previewTrackId === track.id && (
+        <tr>
+          <td colSpan={8} style={{ background: 'var(--bg-surface)', padding: '10px 16px' }}>
+            <audio controls autoPlay src={track.audio_url} style={{ width: '100%', height: 36, accentColor: 'var(--gold)' }} />
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function TrackCard({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete }) {
+  const cm = CAT_COLORS[track.category] || {};
+  const isPlaying = previewTrackId === track.id;
+
+  return (
+    <div className="track-card">
+      <div className="track-card-header">
+        <TrackCover track={track} cm={cm} size={52} />
+        <div className="track-card-body">
+          <div className="track-card-title">{track.title}</div>
+          <div className="track-card-meta">{track.reciter_name || '—'}</div>
+          <div className="track-card-tags">
+            <CategoryBadge category={track.category} cm={cm} />
+            {track.language && (
+              <span style={{ background: 'var(--bg-surface)', color: 'var(--grey)', border: '1px solid var(--divider)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
+                {track.language}
+              </span>
+            )}
+            {track.is_featured && (
+              <span style={{ background: 'rgba(212,168,67,.12)', color: 'var(--gold)', border: '1px solid rgba(212,168,67,.3)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>⭐ Featured</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {isPlaying && track.audio_url && (
+        <audio controls autoPlay src={track.audio_url} className="track-card-audio" />
+      )}
+
+      <div className="track-card-actions">
+        {track.audio_url && (
+          <button type="button" className="tbl-btn tbl-btn-play" onClick={() => setPreviewTrackId(isPlaying ? null : track.id)}>
+            {isPlaying ? '■ Stop' : '▶ Play'}
+          </button>
+        )}
+        <button type="button" className="tbl-btn tbl-btn-edit" onClick={() => onEdit(track)}>Edit</button>
+        <button type="button" className="tbl-btn tbl-btn-delete" onClick={() => onDelete(track.id)}>Delete</button>
+      </div>
     </div>
   );
 }
@@ -291,6 +371,17 @@ function TableSkeleton({ cols }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {[1, 2, 3, 4, 5].map(i => (
         <div key={i} style={{ height: 52, background: 'var(--bg-card)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite', border: '1px solid var(--divider)' }} />
+      ))}
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
+    </div>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="track-cards-list">
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} className="track-card" style={{ height: 140, animation: 'pulse 1.5s ease-in-out infinite' }} />
       ))}
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
     </div>
