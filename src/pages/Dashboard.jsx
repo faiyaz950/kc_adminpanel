@@ -2,6 +2,16 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
 
+// SVG icon components (must be defined before QUICK / statCards)
+const MusicIcon   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>;
+const MicIcon     = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg>;
+const PeopleIcon  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+const ChevronIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>;
+const AddTrackIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+const AddReciterIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg>;
+const StarIcon    = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+const UsersIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+
 const CAT_META = {
   dua:      { label: 'Duas',      color: '#06B6D4', bg: 'rgba(6,182,212,.1)',   border: 'rgba(6,182,212,.25)',   icon: '🤲' },
   noha:     { label: 'Nauhe',     color: '#EF4444', bg: 'rgba(239,68,68,.1)',   border: 'rgba(239,68,68,.25)',   icon: '💧' },
@@ -110,23 +120,26 @@ export default function Dashboard() {
               <h3 className="section-title">Quick Actions</h3>
             </div>
             <div style={quickGrid}>
-              {QUICK.map((q, i) => (
-                <a key={i} href={q.href} style={quickCard}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = q.color;
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = 'var(--divider)';
-                    e.currentTarget.style.transform = 'none';
-                  }}
-                >
-                  <div style={{ ...quickIcon, background: `${q.color}15`, border: `1px solid ${q.color}30` }}>
-                    <span style={{ color: q.color }}><q.icon /></span>
-                  </div>
-                  <span style={{ color: 'var(--grey-light)', fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>{q.label}</span>
-                </a>
-              ))}
+              {QUICK.map((q, i) => {
+                const Icon = q.icon;
+                return (
+                  <a key={i} href={q.href} style={quickCard}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = q.color;
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'var(--divider)';
+                      e.currentTarget.style.transform = 'none';
+                    }}
+                  >
+                    <div style={{ ...quickIcon, background: `${q.color}15`, border: `1px solid ${q.color}30` }}>
+                      <span style={{ color: q.color }}><Icon /></span>
+                    </div>
+                    <span style={{ color: 'var(--grey-light)', fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>{q.label}</span>
+                  </a>
+                );
+              })}
             </div>
           </div>
         </>
@@ -150,16 +163,6 @@ function LoadingPulse() {
     </div>
   );
 }
-
-// SVG Icon components
-const MusicIcon  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>;
-const MicIcon    = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg>;
-const PeopleIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-const ChevronIcon= () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>;
-const AddTrackIcon=() => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-const AddReciterIcon=()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg>;
-const StarIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
-const UsersIcon  = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
 
 const dot = {
   width: 8, height: 8, borderRadius: '50%',
