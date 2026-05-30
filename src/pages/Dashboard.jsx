@@ -19,6 +19,7 @@ const CAT_META = {
   naat:     { label: 'Naats',     color: '#F97316', bg: 'rgba(249,115,22,.1)',  border: 'rgba(249,115,22,.25)',  icon: '🎵' },
   ziyarat:  { label: 'Ziyarat',   color: '#10B981', bg: 'rgba(16,185,129,.1)', border: 'rgba(16,185,129,.25)',  icon: '🕌' },
   kids:     { label: 'Kids',      color: '#F59E0B', bg: 'rgba(245,158,11,.1)',  border: 'rgba(245,158,11,.25)',  icon: '🌟' },
+  tarana:   { label: 'Tarana',    color: '#EC4899', bg: 'rgba(236,72,153,.1)',  border: 'rgba(236,72,153,.25)',  icon: '🚩' },
 };
 
 const QUICK = [
