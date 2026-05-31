@@ -26,11 +26,13 @@ function Layout({ children }) {
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main style={{
+      <main id="kc-main" style={{
         marginLeft: 'var(--sidebar-width)',
         flex: 1,
         minHeight: '100vh',
         background: 'var(--bg-dark)',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
       }}>
         {/* Mobile topbar — shown via CSS */}
         <div id="mobile-topbar" style={{
@@ -65,7 +67,7 @@ function Layout({ children }) {
       <style>{`
         @media (max-width: 768px) {
           #mobile-topbar { display: flex !important; }
-          main { margin-left: 0 !important; }
+          #kc-main { margin-left: 0 !important; }
         }
       `}</style>
     </div>
@@ -100,20 +102,22 @@ export default function App() {
     );
   }
 
-  if (!user) return <Login onLogin={setUser} />;
-
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/tracks" element={<Tracks />} />
-          <Route path="/reciters" element={<Reciters />} />
-          <Route path="/anjumans" element={<Anjumans />} />
-          <Route path="/users" element={<Users />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </Layout>
+      {!user ? (
+        <Login onLogin={setUser} />
+      ) : (
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/tracks" element={<Tracks />} />
+            <Route path="/reciters" element={<Reciters />} />
+            <Route path="/anjumans" element={<Anjumans />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Layout>
+      )}
     </BrowserRouter>
   );
 }

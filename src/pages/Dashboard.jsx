@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import client from '../api/client';
 
 // SVG icon components (must be defined before QUICK / statCards)
@@ -9,8 +9,9 @@ const PeopleIcon  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="
 const ChevronIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>;
 const AddTrackIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const AddReciterIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg>;
-const StarIcon    = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
 const UsersIcon   = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+
+const AnjumanIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 22h18M9 22V8l3-6 3 6v14M5 22V12l-2-2M19 22V12l2-2"/><line x1="9" y1="11" x2="15" y2="11"/></svg>;
 
 const CAT_META = {
   dua:      { label: 'Duas',      color: '#06B6D4', bg: 'rgba(6,182,212,.1)',   border: 'rgba(6,182,212,.25)',   icon: '🤲' },
@@ -23,14 +24,14 @@ const CAT_META = {
 };
 
 const QUICK = [
-  { href: '/tracks',  icon: AddTrackIcon,  label: 'Track Add Karein',  color: 'var(--gold)' },
-  { href: '/reciters',icon: AddReciterIcon,label: 'Reciter Add Karein',color: 'var(--emerald-light)' },
-  { href: '/tracks',  icon: StarIcon,      label: 'Featured Set Karein',color: '#F97316' },
-  { href: '/users',   icon: UsersIcon,     label: 'Users Dekhein',     color: '#06B6D4' },
+  { to: '/tracks',   icon: AddTrackIcon,   label: 'Track Add Karein',    color: 'var(--gold)' },
+  { to: '/reciters', icon: AddReciterIcon, label: 'Reciter Add Karein',  color: 'var(--emerald-light)' },
+  { to: '/anjumans', icon: AnjumanIcon,    label: 'Anjuman Add Karein',  color: '#8B5CF6' },
+  { to: '/users',    icon: UsersIcon,      label: 'Users Dekhein',       color: '#06B6D4' },
 ];
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ tracks: 0, reciters: 0, users: 0 });
+  const [stats, setStats] = useState({ tracks: 0, reciters: 0, anjumans: 0, users: 0 });
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -38,17 +39,24 @@ export default function Dashboard() {
     Promise.all([
       client.get('/tracks'),
       client.get('/reciters'),
+      client.get('/anjumans'),
       client.get('/users'),
-    ]).then(([t, r, u]) => {
-      setStats({ tracks: t.data.length, reciters: r.data.length, users: u.data.length });
+    ]).then(([t, r, a, u]) => {
+      setStats({
+        tracks: t.data.length,
+        reciters: r.data.length,
+        anjumans: a.data.length,
+        users: u.data.length,
+      });
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
   const statCards = [
-    { label: 'Total Tracks',   value: stats.tracks,   icon: <MusicIcon />,   color: 'var(--gold)',          bg: 'rgba(212,168,67,.1)',  border: 'rgba(212,168,67,.25)', href: '/tracks' },
-    { label: 'Reciters',       value: stats.reciters, icon: <MicIcon />,     color: 'var(--emerald-light)', bg: 'rgba(22,163,74,.1)',   border: 'rgba(22,163,74,.25)',  href: '/reciters' },
-    { label: 'Registered Users',value: stats.users,   icon: <PeopleIcon />,  color: '#06B6D4',              bg: 'rgba(6,182,212,.1)',   border: 'rgba(6,182,212,.25)',  href: '/users' },
+    { label: 'Total Tracks',     value: stats.tracks,   icon: <MusicIcon />,   color: 'var(--gold)',          bg: 'rgba(212,168,67,.1)',  border: 'rgba(212,168,67,.25)', href: '/tracks' },
+    { label: 'Reciters',         value: stats.reciters, icon: <MicIcon />,     color: 'var(--emerald-light)', bg: 'rgba(22,163,74,.1)',   border: 'rgba(22,163,74,.25)',  href: '/reciters' },
+    { label: 'Anjumans',         value: stats.anjumans, icon: <AnjumanIcon />, color: '#8B5CF6',              bg: 'rgba(139,92,246,.1)', border: 'rgba(139,92,246,.25)', href: '/anjumans' },
+    { label: 'Registered Users', value: stats.users,    icon: <PeopleIcon />,  color: '#06B6D4',              bg: 'rgba(6,182,212,.1)',   border: 'rgba(6,182,212,.25)',  href: '/users' },
   ];
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -126,7 +134,7 @@ export default function Dashboard() {
               {QUICK.map((q, i) => {
                 const Icon = q.icon;
                 return (
-                  <a key={i} href={q.href} style={quickCard}
+                  <Link key={i} to={q.to} style={quickCard}
                     onMouseEnter={e => {
                       e.currentTarget.style.borderColor = q.color;
                       e.currentTarget.style.transform = 'translateY(-2px)';
@@ -140,7 +148,7 @@ export default function Dashboard() {
                       <span style={{ color: q.color }}><Icon /></span>
                     </div>
                     <span style={{ color: 'var(--grey-light)', fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>{q.label}</span>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
