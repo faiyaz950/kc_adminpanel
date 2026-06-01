@@ -13,8 +13,13 @@ export default function Login({ onLogin }) {
     setError('');
     setLoading(true);
     try {
-      const res = await client.post('/login', { email, password });
-      if (!res.data.user.is_admin) {
+      const res = await client.post('/login', {
+        email,
+        password,
+        device_name: `web-${navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop'}-${Date.now()}`,
+      });
+      const isAdmin = res.data.user.is_admin === true || res.data.user.is_admin === 1;
+      if (!isAdmin) {
         setError('Access denied. Aap admin nahi hain.');
         return;
       }
