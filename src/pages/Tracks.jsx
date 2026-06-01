@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
+import { formatApiError } from '../api/errors';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana'];
 const LANGUAGES = {
@@ -76,7 +77,8 @@ export default function Tracks() {
       else await client.post('/tracks', fd, opts);
       resetForm(); fetchTracks();
     } catch (err) {
-      setSaveError(err.response?.data?.message || 'Error saving track.');
+      console.error('[tracks save]', err.response?.status, err.response?.data || err.message);
+      setSaveError(formatApiError(err, 'Track save nahi hua.'));
     } finally { setSaving(false); }
   };
 
