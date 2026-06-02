@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import client from '../api/client';
+import client, { API_BASE_URL } from '../api/client';
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -31,7 +31,12 @@ export default function Login({ onLogin }) {
         err.response?.data?.message ||
         err.response?.data?.errors?.email?.[0] ||
         err.response?.data?.errors?.password?.[0];
-      setError(apiMsg || 'Email ya password galat hai.');
+
+      if (!err.response) {
+        setError(`Network error: ${err.message || 'Request failed'} (API: ${API_BASE_URL})`);
+      } else {
+        setError(apiMsg || `Login failed (HTTP ${err.response.status})`);
+      }
     } finally {
       setLoading(false);
     }
@@ -126,6 +131,9 @@ export default function Login({ onLogin }) {
 
         <p style={s.footNote}>
           Sirf authorized admins hi access kar sakte hain
+        </p>
+        <p style={{ ...s.footNote, marginTop: 10, fontSize: 10, opacity: 0.8 }}>
+          API: {API_BASE_URL}
         </p>
       </div>
 

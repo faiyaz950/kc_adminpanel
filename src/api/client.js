@@ -3,6 +3,8 @@ import axios from 'axios';
 const rawBaseUrl = import.meta.env.VITE_API_URL || 'https://karbalaconnect.in/api';
 const baseURL = String(rawBaseUrl).replace(/\/+$/, '');
 
+export const API_BASE_URL = baseURL;
+
 const client = axios.create({
   baseURL,
   headers: { Accept: 'application/json' },
