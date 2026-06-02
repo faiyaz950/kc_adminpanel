@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
+import { formatApiError } from '../api/errors';
 
 const OCCASIONS = ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat', 'General'];
-const emptyForm = { name: '', city: '', bio: '', is_verified: false };
+const emptyForm = { name: '', city: '', bio: '', is_verified: false, image_url: null };
 
 export default function Anjumans() {
   const [anjumans, setAnjumans] = useState([]);
@@ -35,12 +36,12 @@ export default function Anjumans() {
       else await client.post('/anjumans', fd, opts);
       resetForm(); fetchAnjumans();
     } catch (err) {
-      setSaveError(err.response?.data?.message || 'Error saving.');
+      setSaveError(formatApiError(err, 'Anjuman save nahi hua.'));
     } finally { setSaving(false); }
   };
 
   const handleEdit = (a) => {
-    setForm({ name: a.name, city: a.city, bio: a.bio || '', is_verified: a.is_verified });
+    setForm({ name: a.name, city: a.city, bio: a.bio || '', is_verified: !!a.is_verified, image_url: a.image_url || null });
     setEditId(a.id); setImageFile(null); setShowForm(true); setSaveError('');
     window.scrollTo(0, 0);
   };
@@ -55,7 +56,16 @@ export default function Anjumans() {
   const resetForm = () => { setForm(emptyForm); setEditId(null); setImageFile(null); setShowForm(false); setSaveError(''); };
 
   if (selectedAnjuman) {
-    return <AnjumanTracks anjuman={selectedAnjuman} onBack={() => { setSelectedAnjuman(null); fetchAnjumans(); }} />;
+    return (
+      <AnjumanTracks
+        anjuman={selectedAnjuman}
+        onBack={() => { setSelectedAnjuman(null); fetchAnjumans(); }}
+        onAnjumanUpdated={(updated) => {
+          setSelectedAnjuman(updated);
+          setAnjumans(prev => prev.map(a => (a.id === updated.id ? updated : a)));
+        }}
+      />
+    );
   }
 
   return (
@@ -91,8 +101,15 @@ export default function Anjumans() {
                 <textarea className="form-input" style={{ height: 80, resize: 'vertical' }} value={form.bio} onChange={e => setForm(p => ({ ...p, bio: e.target.value }))} />
               </div>
               <div>
-                <label className="form-label">Cover Image</label>
+                <label className="form-label">Cover Image {editId ? '(naya upload optional)' : ''}</label>
                 <input type="file" accept="image/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }} onChange={e => setImageFile(e.target.files[0])} />
+                {(imageFile || form.image_url) && (
+                  <img
+                    src={imageFile ? URL.createObjectURL(imageFile) : form.image_url}
+                    alt=""
+                    style={{ width: 68, height: 68, borderRadius: 10, objectFit: 'cover', marginTop: 10, border: '1px solid var(--divider)' }}
+                  />
+                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', paddingTop: 28 }}>
                 <button type="button"
@@ -113,7 +130,7 @@ export default function Anjumans() {
             {saveError && <div className="err-banner" style={{ marginTop: 16 }}>{saveError}</div>}
             <div className="form-actions">
               <button type="button" className="btn-cancel" onClick={resetForm}>Cancel</button>
-              <button type="submit" className="btn-save" disabled={saving}>{saving ? 'Saving...' : editId ? 'Update' : 'Add Anjuman'}</button>
+              <button type="submit" className="btn-save" disabled={saving}>{saving ? 'Saving...' : editId ? 'Update Karein' : 'Add Anjuman'}</button>
             </div>
           </form>
         </div>
@@ -156,12 +173,14 @@ export default function Anjumans() {
                 </div>
                 {a.bio && <p style={{ color: 'var(--grey)', fontSize: 12, lineHeight: 1.5, marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{a.bio}</p>}
 
-                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                  <button style={tracksBtn} onClick={() => setSelectedAnjuman(a)}>
-                    🎵 Tracks
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                  <button type="button" style={tracksBtn} onClick={() => setSelectedAnjuman(a)}>
+                    🎵 Tracks Manage Karein
                   </button>
-                  <button className="tbl-btn tbl-btn-edit" style={{ flex: 0, padding: '5px 12px' }} onClick={() => handleEdit(a)}>Edit</button>
-                  <button className="tbl-btn tbl-btn-delete" style={{ flex: 0, padding: '5px 12px' }} onClick={() => handleDelete(a.id)}>Del</button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" className="tbl-btn tbl-btn-edit" style={{ flex: 1, textAlign: 'center', padding: '8px 12px' }} onClick={() => handleEdit(a)}>Edit</button>
+                    <button type="button" className="tbl-btn tbl-btn-delete" style={{ flex: 1, textAlign: 'center', padding: '8px 12px' }} onClick={() => handleDelete(a.id)}>Delete</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -172,9 +191,21 @@ export default function Anjumans() {
   );
 }
 
-function AnjumanTracks({ anjuman, onBack }) {
+function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
+  const [anjumanInfo, setAnjumanInfo] = useState(anjuman);
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAnjumanForm, setShowAnjumanForm] = useState(false);
+  const [anjumanForm, setAnjumanForm] = useState({
+    name: anjuman.name,
+    city: anjuman.city,
+    bio: anjuman.bio || '',
+    is_verified: !!anjuman.is_verified,
+    image_url: anjuman.image_url || null,
+  });
+  const [anjumanImageFile, setAnjumanImageFile] = useState(null);
+  const [anjumanSaving, setAnjumanSaving] = useState(false);
+  const [anjumanSaveError, setAnjumanSaveError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [title, setTitle] = useState('');
@@ -184,13 +215,50 @@ function AnjumanTracks({ anjuman, onBack }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [audioPreview, setAudioPreview] = useState(null);
+  const [trackImageUrl, setTrackImageUrl] = useState(null);
   const [playing, setPlaying] = useState(null);
 
-  useEffect(() => { fetchTracks(); }, []);
+  useEffect(() => { fetchTracks(); }, [anjumanInfo.id]);
 
   const fetchTracks = () => {
     setLoading(true);
-    client.get(`/anjumans/${anjuman.id}/tracks`).then(r => setTracks(r.data)).finally(() => setLoading(false));
+    client.get(`/anjumans/${anjumanInfo.id}/tracks`).then(r => setTracks(r.data)).finally(() => setLoading(false));
+  };
+
+  const resetAnjumanForm = () => {
+    setAnjumanForm({
+      name: anjumanInfo.name,
+      city: anjumanInfo.city,
+      bio: anjumanInfo.bio || '',
+      is_verified: !!anjumanInfo.is_verified,
+      image_url: anjumanInfo.image_url || null,
+    });
+    setAnjumanImageFile(null);
+    setAnjumanSaveError('');
+    setShowAnjumanForm(false);
+  };
+
+  const handleAnjumanSubmit = async (e) => {
+    e.preventDefault();
+    setAnjumanSaving(true);
+    setAnjumanSaveError('');
+    try {
+      const fd = new FormData();
+      fd.append('name', anjumanForm.name);
+      fd.append('city', anjumanForm.city);
+      fd.append('bio', anjumanForm.bio || '');
+      fd.append('is_verified', anjumanForm.is_verified ? '1' : '0');
+      if (anjumanImageFile) fd.append('image', anjumanImageFile);
+      const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
+      const { data } = await client.post(`/anjumans/${anjumanInfo.id}`, fd, opts);
+      setAnjumanInfo(data);
+      onAnjumanUpdated?.(data);
+      resetAnjumanForm();
+    } catch (err) {
+      setAnjumanSaveError(formatApiError(err, 'Anjuman update nahi hua.'));
+    } finally {
+      setAnjumanSaving(false);
+    }
   };
 
   const resetTrackForm = () => {
@@ -200,6 +268,7 @@ function AnjumanTracks({ anjuman, onBack }) {
     setAudioFile(null);
     setImageFile(null);
     setAudioPreview(null);
+    setTrackImageUrl(null);
     setShowForm(false);
     setSaveError('');
   };
@@ -216,11 +285,11 @@ function AnjumanTracks({ anjuman, onBack }) {
       if (imageFile) fd.append('image', imageFile);
       const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
       if (editId) await client.post(`/anjuman-tracks/${editId}`, fd, opts);
-      else await client.post(`/anjumans/${anjuman.id}/tracks`, fd, opts);
+      else await client.post(`/anjumans/${anjumanInfo.id}/tracks`, fd, opts);
       resetTrackForm();
       fetchTracks();
     } catch (err) {
-      setSaveError(err.response?.data?.message || 'Upload failed.');
+      setSaveError(formatApiError(err, 'Track save nahi hua.'));
     } finally { setSaving(false); }
   };
 
@@ -231,6 +300,7 @@ function AnjumanTracks({ anjuman, onBack }) {
     setAudioFile(null);
     setImageFile(null);
     setAudioPreview(t.audio_url || null);
+    setTrackImageUrl(t.image_url || null);
     setShowForm(true);
     setSaveError('');
     window.scrollTo(0, 0);
@@ -250,13 +320,90 @@ function AnjumanTracks({ anjuman, onBack }) {
           <button onClick={onBack} style={{ background: 'none', color: 'var(--gold)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, padding: 0 }}>
             ← Anjumans
           </button>
-          <h2 className="page-title">{anjuman.name}</h2>
-          <p className="page-subtitle">📍 {anjuman.city} · {tracks.length} tracks</p>
+          <h2 className="page-title">{anjumanInfo.name}</h2>
+          <p className="page-subtitle">📍 {anjumanInfo.city} · {tracks.length} tracks</p>
         </div>
-        <button className="btn-primary" onClick={() => { if (showForm) resetTrackForm(); else setShowForm(true); }}>
-          {showForm ? '✕ Cancel' : '+ Track Upload'}
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="btn-cancel"
+            style={{ padding: '10px 16px' }}
+            onClick={() => {
+              if (showAnjumanForm) resetAnjumanForm();
+              else {
+                setShowForm(false);
+                resetTrackForm();
+                setShowAnjumanForm(true);
+              }
+            }}
+          >
+            {showAnjumanForm ? '✕ Cancel Edit' : '✏️ Anjuman Edit'}
+          </button>
+          <button type="button" className="btn-primary" onClick={() => { if (showForm) resetTrackForm(); else { setShowAnjumanForm(false); setShowForm(true); } }}>
+            {showForm ? '✕ Cancel' : '+ Track Upload'}
+          </button>
+        </div>
       </div>
+
+      {showAnjumanForm && (
+        <div className="form-card" style={{ marginBottom: 24 }}>
+          <div className="section-title-row" style={{ marginBottom: 20 }}>
+            <div className="accent-bar" />
+            <h3 className="section-title">Anjuman Edit Karein</h3>
+          </div>
+          <form onSubmit={handleAnjumanSubmit}>
+            <div className="form-grid-2">
+              <div>
+                <label className="form-label">Anjuman Ka Naam *</label>
+                <input className="form-input" value={anjumanForm.name} onChange={e => setAnjumanForm(p => ({ ...p, name: e.target.value }))} required />
+              </div>
+              <div>
+                <label className="form-label">City *</label>
+                <input className="form-input" value={anjumanForm.city} onChange={e => setAnjumanForm(p => ({ ...p, city: e.target.value }))} required />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">Bio (optional)</label>
+                <textarea className="form-input" style={{ height: 80, resize: 'vertical' }} value={anjumanForm.bio} onChange={e => setAnjumanForm(p => ({ ...p, bio: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">Cover Image (optional)</label>
+                <input type="file" accept="image/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }} onChange={e => setAnjumanImageFile(e.target.files[0])} />
+                {(anjumanImageFile || anjumanForm.image_url) && (
+                  <img
+                    src={anjumanImageFile ? URL.createObjectURL(anjumanImageFile) : anjumanForm.image_url}
+                    alt=""
+                    style={{ width: 68, height: 68, borderRadius: 10, objectFit: 'cover', marginTop: 10, border: '1px solid var(--divider)' }}
+                  />
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', paddingTop: 28 }}>
+                <button
+                  type="button"
+                  onClick={() => setAnjumanForm(p => ({ ...p, is_verified: !p.is_verified }))}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    background: anjumanForm.is_verified ? 'rgba(22,163,74,.12)' : 'var(--bg-surface)',
+                    border: `1px solid ${anjumanForm.is_verified ? 'rgba(22,163,74,.4)' : 'var(--divider)'}`,
+                    color: anjumanForm.is_verified ? 'var(--emerald-light)' : 'var(--grey)',
+                    borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600,
+                    transition: 'all .15s', width: '100%',
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{anjumanForm.is_verified ? '✅' : '⬜'}</span>
+                  Verified Anjuman
+                </button>
+              </div>
+            </div>
+            {anjumanSaveError && <div className="err-banner" style={{ marginTop: 16 }}>{anjumanSaveError}</div>}
+            <div className="form-actions">
+              <button type="button" className="btn-cancel" onClick={resetAnjumanForm}>Cancel</button>
+              <button type="submit" className="btn-save" disabled={anjumanSaving}>
+                {anjumanSaving ? 'Saving...' : 'Update Karein'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {showForm && (
         <div className="form-card" style={{ marginBottom: 24 }}>
@@ -287,6 +434,13 @@ function AnjumanTracks({ anjuman, onBack }) {
               <div>
                 <label className="form-label">Cover Image (optional)</label>
                 <input type="file" accept="image/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }} onChange={e => setImageFile(e.target.files[0])} />
+                {(imageFile || trackImageUrl) && (
+                  <img
+                    src={imageFile ? URL.createObjectURL(imageFile) : trackImageUrl}
+                    alt=""
+                    style={{ width: 68, height: 68, borderRadius: 10, objectFit: 'cover', marginTop: 10, border: '1px solid var(--divider)' }}
+                  />
+                )}
               </div>
             </div>
             {saveError && <div className="err-banner" style={{ marginTop: 16 }}>{saveError}</div>}
