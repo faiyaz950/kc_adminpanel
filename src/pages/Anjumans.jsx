@@ -176,6 +176,7 @@ function AnjumanTracks({ anjuman, onBack }) {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [title, setTitle] = useState('');
   const [occasion, setOccasion] = useState('');
   const [audioFile, setAudioFile] = useState(null);
@@ -192,26 +193,54 @@ function AnjumanTracks({ anjuman, onBack }) {
     client.get(`/anjumans/${anjuman.id}/tracks`).then(r => setTracks(r.data)).finally(() => setLoading(false));
   };
 
+  const resetTrackForm = () => {
+    setEditId(null);
+    setTitle('');
+    setOccasion('');
+    setAudioFile(null);
+    setImageFile(null);
+    setAudioPreview(null);
+    setShowForm(false);
+    setSaveError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!audioFile) { setSaveError('Audio file required'); return; }
+    if (!editId && !audioFile) { setSaveError('Audio file required'); return; }
     setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
-      fd.append('title', title); fd.append('occasion', occasion);
-      fd.append('audio', audioFile);
+      fd.append('title', title);
+      fd.append('occasion', occasion);
+      if (audioFile) fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
-      await client.post(`/anjumans/${anjuman.id}/tracks`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setTitle(''); setOccasion(''); setAudioFile(null); setImageFile(null); setAudioPreview(null); setShowForm(false);
+      const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
+      if (editId) await client.post(`/anjuman-tracks/${editId}`, fd, opts);
+      else await client.post(`/anjumans/${anjuman.id}/tracks`, fd, opts);
+      resetTrackForm();
       fetchTracks();
     } catch (err) {
       setSaveError(err.response?.data?.message || 'Upload failed.');
     } finally { setSaving(false); }
   };
 
+  const handleEdit = (t) => {
+    setEditId(t.id);
+    setTitle(t.title);
+    setOccasion(t.occasion || '');
+    setAudioFile(null);
+    setImageFile(null);
+    setAudioPreview(t.audio_url || null);
+    setShowForm(true);
+    setSaveError('');
+    window.scrollTo(0, 0);
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Track delete karein?')) return;
-    await client.delete(`/anjuman-tracks/${id}`); fetchTracks();
+    await client.delete(`/anjuman-tracks/${id}`);
+    if (editId === id) resetTrackForm();
+    fetchTracks();
   };
 
   return (
@@ -224,7 +253,7 @@ function AnjumanTracks({ anjuman, onBack }) {
           <h2 className="page-title">{anjuman.name}</h2>
           <p className="page-subtitle">📍 {anjuman.city} · {tracks.length} tracks</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowForm(p => !p)}>
+        <button className="btn-primary" onClick={() => { if (showForm) resetTrackForm(); else setShowForm(true); }}>
           {showForm ? '✕ Cancel' : '+ Track Upload'}
         </button>
       </div>
@@ -233,7 +262,7 @@ function AnjumanTracks({ anjuman, onBack }) {
         <div className="form-card" style={{ marginBottom: 24 }}>
           <div className="section-title-row" style={{ marginBottom: 20 }}>
             <div className="accent-bar" />
-            <h3 className="section-title">Naya Track Upload</h3>
+            <h3 className="section-title">{editId ? 'Track Edit Karein' : 'Naya Track Upload'}</h3>
           </div>
           <form onSubmit={handleSubmit}>
             <div className="form-grid-2">
@@ -249,9 +278,10 @@ function AnjumanTracks({ anjuman, onBack }) {
                 </select>
               </div>
               <div>
-                <label className="form-label">Audio File * (MP3/WAV)</label>
+                <label className="form-label">Audio File {editId ? '(optional — naya upload)' : '* (MP3/WAV)'}</label>
                 <input type="file" accept="audio/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }}
-                  onChange={e => { const f = e.target.files[0]; setAudioFile(f); if (f) setAudioPreview(URL.createObjectURL(f)); }} required />
+                  onChange={e => { const f = e.target.files[0]; setAudioFile(f); if (f) setAudioPreview(URL.createObjectURL(f)); }}
+                  required={!editId} />
                 {audioPreview && <audio controls src={audioPreview} style={{ marginTop: 10, width: '100%', height: 36, accentColor: 'var(--gold)' }} />}
               </div>
               <div>
@@ -262,8 +292,10 @@ function AnjumanTracks({ anjuman, onBack }) {
             {saveError && <div className="err-banner" style={{ marginTop: 16 }}>{saveError}</div>}
             {saving && <p style={{ color: 'var(--emerald-light)', fontSize: 13, marginTop: 12 }}>⬆ Uploading to Cloudinary... please wait</p>}
             <div className="form-actions">
-              <button type="button" className="btn-cancel" onClick={() => setShowForm(false)}>Cancel</button>
-              <button type="submit" className="btn-save" disabled={saving}>{saving ? 'Uploading...' : 'Upload Track'}</button>
+              <button type="button" className="btn-cancel" onClick={resetTrackForm}>Cancel</button>
+              <button type="submit" className="btn-save" disabled={saving}>
+                {saving ? 'Saving...' : editId ? 'Update Track' : 'Upload Track'}
+              </button>
             </div>
           </form>
         </div>
@@ -307,7 +339,10 @@ function AnjumanTracks({ anjuman, onBack }) {
                     </button>
                   </td>
                   <td>
-                    <button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button>
+                      <button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button>
+                    </div>
                   </td>
                 </tr>
               ))}
