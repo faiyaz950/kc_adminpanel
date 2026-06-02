@@ -14,8 +14,8 @@ export default function Login({ onLogin }) {
     setLoading(true);
     try {
       const res = await client.post('/login', {
-        email,
-        password,
+        email: email.trim(),
+        password: password.trim(),
         device_name: `web-${navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop'}-${Date.now()}`,
       });
       const isAdmin = res.data.user.is_admin === true || res.data.user.is_admin === 1;
@@ -27,7 +27,11 @@ export default function Login({ onLogin }) {
       localStorage.setItem('user', JSON.stringify(res.data.user));
       onLogin(res.data.user);
     } catch (err) {
-      setError(err.response?.data?.message || 'Email ya password galat hai.');
+      const apiMsg =
+        err.response?.data?.message ||
+        err.response?.data?.errors?.email?.[0] ||
+        err.response?.data?.errors?.password?.[0];
+      setError(apiMsg || 'Email ya password galat hai.');
     } finally {
       setLoading(false);
     }
