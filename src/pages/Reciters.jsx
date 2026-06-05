@@ -4,6 +4,10 @@ import { formatApiError } from '../api/errors';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana'];
 const LANGUAGES = ['Arabic', 'Urdu', 'Punjabi', 'Hindi', 'Farsi', 'English'];
+const COUNTRIES = [
+  'India', 'Pakistan', 'Iraq', 'Iran', 'UAE', 'UK', 'USA',
+  'Canada', 'Kuwait', 'Bahrain', 'Saudi Arabia', 'Australia', 'Other',
+];
 const CAT_COLORS = {
   dua:      { color: '#06B6D4', bg: 'rgba(6,182,212,.12)',   border: 'rgba(6,182,212,.3)'   },
   noha:     { color: '#EF4444', bg: 'rgba(239,68,68,.12)',   border: 'rgba(239,68,68,.3)'   },
@@ -13,7 +17,7 @@ const CAT_COLORS = {
   kids:     { color: '#F59E0B', bg: 'rgba(245,158,11,.12)',  border: 'rgba(245,158,11,.3)'  },
   tarana:   { color: '#EC4899', bg: 'rgba(236,72,153,.12)',  border: 'rgba(236,72,153,.3)'  },
 };
-const emptyForm = { name: '', bio: '', categories: [], languages: [], total_tracks: 0, is_verified: false };
+const emptyForm = { name: '', bio: '', country: '', categories: [], languages: [], total_tracks: 0, is_verified: false };
 
 export default function Reciters() {
   const [reciters, setReciters] = useState([]);
@@ -41,6 +45,7 @@ export default function Reciters() {
       const fd = new FormData();
       fd.append('name', form.name);
       fd.append('bio', form.bio || '');
+      fd.append('country', form.country || '');
       fd.append('total_tracks', form.total_tracks || 0);
       fd.append('is_verified', form.is_verified ? '1' : '0');
       fd.append('categories', JSON.stringify(form.categories || []));
@@ -56,7 +61,7 @@ export default function Reciters() {
   };
 
   const handleEdit = (r) => {
-    setForm({ ...r, categories: r.categories || [], languages: r.languages || [] });
+    setForm({ ...r, country: r.country || '', categories: r.categories || [], languages: r.languages || [] });
     setEditId(r.id); setShowForm(true); setImageFile(null); setSaveError('');
     window.scrollTo(0, 0);
   };
@@ -106,6 +111,20 @@ export default function Reciters() {
               <div style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Bio</label>
                 <textarea className="form-input" value={form.bio || ''} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} rows={3} style={{ resize: 'vertical' }} />
+              </div>
+
+              {/* Country */}
+              <div>
+                <label className="form-label">Country *</label>
+                <select
+                  className="form-input"
+                  value={form.country || ''}
+                  onChange={e => setForm(f => ({ ...f, country: e.target.value }))}
+                  required
+                >
+                  <option value="">-- Select Country --</option>
+                  {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
 
               {/* Categories */}
@@ -226,7 +245,14 @@ function ReciterCard({ r, onEdit, onDelete }) {
                 <span style={{ background: 'rgba(212,168,67,.15)', color: 'var(--gold)', border: '1px solid rgba(212,168,67,.3)', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>✓ Verified</span>
               )}
             </div>
-            <div style={{ color: 'var(--grey-dark)', fontSize: 12, marginTop: 2 }}>{r.total_tracks} tracks</div>
+            <div style={{ color: 'var(--grey-dark)', fontSize: 12, marginTop: 2 }}>
+              {r.total_tracks} tracks
+              {r.country && (
+                <span style={{ marginLeft: 6, background: 'rgba(212,168,67,.1)', color: 'var(--gold)', border: '1px solid rgba(212,168,67,.25)', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 700 }}>
+                  📍 {r.country}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
