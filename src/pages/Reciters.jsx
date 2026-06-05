@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import ErrorBanner from '../components/ErrorBanner';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana'];
 const LANGUAGES = ['Arabic', 'Urdu', 'Punjabi', 'Hindi', 'Farsi', 'English'];
@@ -28,12 +29,17 @@ export default function Reciters() {
   const [imageFile, setImageFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [fetchError, setFetchError] = useState('');
 
   useEffect(() => { fetchReciters(); }, []);
 
   const fetchReciters = () => {
     setLoading(true);
-    client.get('/reciters').then(r => setReciters(r.data)).catch(console.error).finally(() => setLoading(false));
+    setFetchError('');
+    client.get('/reciters')
+      .then(r => setReciters(r.data))
+      .catch(err => setFetchError(formatApiError(err, 'Reciters load nahi hue. Backend ya network check karein.')))
+      .finally(() => setLoading(false));
   };
 
   const toggle = (arr, val) => arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
@@ -91,6 +97,7 @@ export default function Reciters() {
           {showForm ? '✕ Cancel' : '+ Reciter Add Karein'}
         </button>
       </div>
+      <ErrorBanner error={fetchError} onRetry={fetchReciters} />
 
       {showForm && (
         <div className="form-card" style={{ marginBottom: 24 }}>

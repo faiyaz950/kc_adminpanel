@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import client from '../api/client';
+import ErrorBanner from '../components/ErrorBanner';
 
 // SVG icon components (must be defined before QUICK / statCards)
 const MusicIcon   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>;
@@ -33,15 +34,30 @@ const QUICK = [
 export default function Dashboard() {
   const [stats, setStats] = useState({ tracks: 0, reciters: 0, anjumans: 0, users: 0 });
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const fetchStats = () => {
+    setLoading(true);
+    setApiError('');
     Promise.allSettled([
       client.get('/tracks'),
       client.get('/reciters'),
       client.get('/anjumans'),
       client.get('/users'),
     ]).then(([t, r, a, u]) => {
+      const anyFailed = [t, r, a, u].some(x => x.status === 'rejected');
+      if (anyFailed) {
+        const firstErr = [t, r, a, u].find(x => x.status === 'rejected');
+        const status = firstErr?.reason?.response?.status;
+        setApiError(
+          status === 500
+            ? 'Server error (500) — backend mein koi issue hai. Laravel logs check karein. Migration run hua? (php artisan migrate)'
+            : status === 403
+            ? 'Admin token expire ho gaya — dobara login karein.'
+            : `API error (${status ?? 'network'}) — backend reachable hai? URL: ${import.meta.env.VITE_API_URL}`
+        );
+      }
       setStats({
         tracks:   t.status === 'fulfilled' ? t.value.data.length : 0,
         reciters: r.status === 'fulfilled' ? r.value.data.length : 0,
@@ -49,7 +65,9 @@ export default function Dashboard() {
         users:    u.status === 'fulfilled' ? u.value.data.length : 0,
       });
     }).finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchStats(); }, []);
 
   const statCards = [
     { label: 'Total Tracks',     value: stats.tracks,   icon: <MusicIcon />,   color: 'var(--gold)',          bg: 'rgba(212,168,67,.1)',  border: 'rgba(212,168,67,.25)', href: '/tracks' },
@@ -62,7 +80,6 @@ export default function Dashboard() {
 
   return (
     <div className="page-wrapper">
-      {/* Header */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
           <div style={dot} />
@@ -72,6 +89,8 @@ export default function Dashboard() {
           Khush aamdeed, <span style={{ color: 'var(--gold)', fontWeight: 600 }}>{user.name || 'Admin'}</span> — Karbala Connect ka overview
         </p>
       </div>
+
+      <ErrorBanner error={apiError} onRetry={fetchStats} />
 
       {loading ? <LoadingPulse /> : (
         <>

@@ -1,14 +1,27 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
+import ErrorBanner from '../components/ErrorBanner';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [fetchError, setFetchError] = useState('');
 
-  useEffect(() => {
-    client.get('/users').then(r => setUsers(r.data)).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  const fetchUsers = () => {
+    setLoading(true);
+    setFetchError('');
+    client.get('/users')
+      .then(r => setUsers(r.data))
+      .catch(err => setFetchError(
+        err?.response?.status === 403
+          ? 'Admin access chahiye. Dobara login karein.'
+          : `Users load nahi hue: ${err?.response?.data?.message || err?.message || 'Network error'}`
+      ))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchUsers(); }, []);
 
   const filtered = users.filter(u =>
     u.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -22,6 +35,7 @@ export default function Users() {
           <h2 className="page-title">Users</h2>
           <p className="page-subtitle">{users.length} registered users</p>
         </div>
+
         {/* Search */}
         <div style={searchWrap}>
           <svg width="15" height="15" style={searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -35,6 +49,7 @@ export default function Users() {
           />
         </div>
       </div>
+      <ErrorBanner error={fetchError} onRetry={fetchUsers} />
 
       {/* Stats bar */}
       <div style={statsRow}>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import ErrorBanner from '../components/ErrorBanner';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana'];
 const LANGUAGES = {
@@ -47,18 +48,20 @@ export default function Tracks() {
   const [saveError, setSaveError] = useState('');
   const [previewTrackId, setPreviewTrackId] = useState(null);
   const [audioPreviewUrl, setAudioPreviewUrl] = useState(null);
+  const [fetchError, setFetchError] = useState('');
 
   useEffect(() => { fetchTracks(); }, [filterCat]);
   useEffect(() => {
-    client.get('/reciters').then(r => setReciters(r.data)).catch(console.error);
+    client.get('/reciters').then(r => setReciters(r.data)).catch(() => {});
   }, []);
 
   const fetchTracks = () => {
     setLoading(true);
+    setFetchError('');
     const params = filterCat ? { category: filterCat } : {};
     client.get('/tracks', { params })
-      .then(r => setTracks(r.data))
-      .catch(console.error)
+      .then(r => { setTracks(r.data); })
+      .catch(err => setFetchError(formatApiError(err, 'Tracks load nahi hue. Backend ya network check karein.')))
       .finally(() => setLoading(false));
   };
 
@@ -110,7 +113,6 @@ export default function Tracks() {
 
   return (
     <div className="page-wrapper">
-      {/* Header */}
       <div className="page-header">
         <div>
           <h2 className="page-title">Tracks</h2>
@@ -120,6 +122,7 @@ export default function Tracks() {
           {showForm ? '✕ Cancel' : '+ Track Add Karein'}
         </button>
       </div>
+      <ErrorBanner error={fetchError} onRetry={fetchTracks} />
 
       {/* Form */}
       {showForm && (

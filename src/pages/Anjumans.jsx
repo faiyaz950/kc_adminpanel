@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import ErrorBanner from '../components/ErrorBanner';
 
 const OCCASIONS = ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat', 'General'];
 const emptyForm = { name: '', city: '', bio: '', is_verified: false, image_url: null };
@@ -15,12 +16,17 @@ export default function Anjumans() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [selectedAnjuman, setSelectedAnjuman] = useState(null);
+  const [fetchError, setFetchError] = useState('');
 
   useEffect(() => { fetchAnjumans(); }, []);
 
   const fetchAnjumans = () => {
     setLoading(true);
-    client.get('/anjumans').then(r => setAnjumans(r.data)).catch(console.error).finally(() => setLoading(false));
+    setFetchError('');
+    client.get('/anjumans')
+      .then(r => setAnjumans(r.data))
+      .catch(err => setFetchError(formatApiError(err, 'Anjumans load nahi hue. Backend ya network check karein.')))
+      .finally(() => setLoading(false));
   };
 
   const handleSubmit = async (e) => {
@@ -83,6 +89,7 @@ export default function Anjumans() {
           {showForm ? '✕ Cancel' : '+ Anjuman Add Karein'}
         </button>
       </div>
+      <ErrorBanner error={fetchError} onRetry={fetchAnjumans} />
 
       {showForm && (
         <div className="form-card" style={{ marginBottom: 24 }}>
