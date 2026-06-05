@@ -48,9 +48,13 @@ export default function Anjumans() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Anjuman aur uske tamam tracks delete ho jayenge. Sure?')) return;
-    await client.delete(`/anjumans/${id}`);
-    fetchAnjumans();
-    if (selectedAnjuman?.id === id) setSelectedAnjuman(null);
+    try {
+      await client.delete(`/anjumans/${id}`);
+      fetchAnjumans();
+      if (selectedAnjuman?.id === id) setSelectedAnjuman(null);
+    } catch (err) {
+      alert(formatApiError(err, 'Anjuman delete nahi hua.'));
+    }
   };
 
   const resetForm = () => { setForm(emptyForm); setEditId(null); setImageFile(null); setShowForm(false); setSaveError(''); };
@@ -222,7 +226,10 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
 
   const fetchTracks = () => {
     setLoading(true);
-    client.get(`/anjumans/${anjumanInfo.id}/tracks`).then(r => setTracks(r.data)).finally(() => setLoading(false));
+    client.get(`/anjumans/${anjumanInfo.id}/tracks`)
+      .then(r => setTracks(r.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
   const resetAnjumanForm = () => {
@@ -308,9 +315,13 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Track delete karein?')) return;
-    await client.delete(`/anjuman-tracks/${id}`);
-    if (editId === id) resetTrackForm();
-    fetchTracks();
+    try {
+      await client.delete(`/anjuman-tracks/${id}`);
+      if (editId === id) resetTrackForm();
+      fetchTracks();
+    } catch (err) {
+      alert(formatApiError(err, 'Track delete nahi hua.'));
+    }
   };
 
   return (
@@ -427,7 +438,12 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
               <div>
                 <label className="form-label">Audio File {editId ? '(optional — naya upload)' : '* (MP3/WAV)'}</label>
                 <input type="file" accept="audio/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }}
-                  onChange={e => { const f = e.target.files[0]; setAudioFile(f); if (f) setAudioPreview(URL.createObjectURL(f)); }}
+                  onChange={e => {
+                    const f = e.target.files[0];
+                    setAudioFile(f);
+                    if (audioPreview?.startsWith('blob:')) URL.revokeObjectURL(audioPreview);
+                    setAudioPreview(f ? URL.createObjectURL(f) : null);
+                  }}
                   required={!editId} />
                 {audioPreview && <audio controls src={audioPreview} style={{ marginTop: 10, width: '100%', height: 36, accentColor: 'var(--gold)' }} />}
               </div>

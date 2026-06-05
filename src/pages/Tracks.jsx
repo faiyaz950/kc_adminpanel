@@ -90,7 +90,12 @@ export default function Tracks() {
 
   const handleDelete = async (id) => {
     if (!confirm('Yeh track delete karna chahte ho?')) return;
-    await client.delete(`/tracks/${id}`); fetchTracks();
+    try {
+      await client.delete(`/tracks/${id}`);
+      fetchTracks();
+    } catch (err) {
+      alert(formatApiError(err, 'Track delete nahi hua.'));
+    }
   };
 
   const resetForm = () => {
@@ -164,7 +169,12 @@ export default function Tracks() {
               </FormField>
               <FormField label="MP3 / Audio File" fullWidth>
                 <input type="file" accept="audio/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }}
-                  onChange={e => { const f = e.target.files[0]; setAudioFile(f); if (f) setAudioPreviewUrl(URL.createObjectURL(f)); }} />
+                  onChange={e => {
+                    const f = e.target.files[0];
+                    setAudioFile(f);
+                    if (audioPreviewUrl && audioPreviewUrl.startsWith('blob:')) URL.revokeObjectURL(audioPreviewUrl);
+                    setAudioPreviewUrl(f ? URL.createObjectURL(f) : null);
+                  }} />
                 {(audioPreviewUrl || form.audio_url) && (
                   <audio controls src={audioPreviewUrl || form.audio_url} key={audioPreviewUrl || form.audio_url}
                     style={{ width: '100%', height: 38, marginTop: 10, accentColor: 'var(--gold)', borderRadius: 8 }} />

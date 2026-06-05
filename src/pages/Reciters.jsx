@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
+import { formatApiError } from '../api/errors';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana'];
 const LANGUAGES = ['Arabic', 'Urdu', 'Punjabi', 'Hindi', 'Farsi', 'English'];
@@ -50,7 +51,7 @@ export default function Reciters() {
       else await client.post('/reciters', fd, opts);
       resetForm(); fetchReciters();
     } catch (err) {
-      setSaveError(err.response?.data?.message || 'Error saving reciter.');
+      setSaveError(formatApiError(err, 'Reciter save nahi hua.'));
     } finally { setSaving(false); }
   };
 
@@ -62,7 +63,12 @@ export default function Reciters() {
 
   const handleDelete = async (id) => {
     if (!confirm('Reciter delete karna chahte ho?')) return;
-    await client.delete(`/reciters/${id}`); fetchReciters();
+    try {
+      await client.delete(`/reciters/${id}`);
+      fetchReciters();
+    } catch (err) {
+      alert(formatApiError(err, 'Reciter delete nahi hua.'));
+    }
   };
 
   const resetForm = () => {

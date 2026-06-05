@@ -36,20 +36,19 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    Promise.all([
+    Promise.allSettled([
       client.get('/tracks'),
       client.get('/reciters'),
       client.get('/anjumans'),
       client.get('/users'),
     ]).then(([t, r, a, u]) => {
       setStats({
-        tracks: t.data.length,
-        reciters: r.data.length,
-        anjumans: a.data.length,
-        users: u.data.length,
+        tracks:   t.status === 'fulfilled' ? t.value.data.length : 0,
+        reciters: r.status === 'fulfilled' ? r.value.data.length : 0,
+        anjumans: a.status === 'fulfilled' ? a.value.data.length : 0,
+        users:    u.status === 'fulfilled' ? u.value.data.length : 0,
       });
-    }).catch(console.error)
-      .finally(() => setLoading(false));
+    }).finally(() => setLoading(false));
   }, []);
 
   const statCards = [
