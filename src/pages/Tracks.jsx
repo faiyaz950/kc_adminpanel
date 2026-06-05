@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
 import ErrorBanner from '../components/ErrorBanner';
+import SearchInput from '../components/SearchInput';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana'];
 const LANGUAGES = {
@@ -49,6 +50,7 @@ export default function Tracks() {
   const [previewTrackId, setPreviewTrackId] = useState(null);
   const [audioPreviewUrl, setAudioPreviewUrl] = useState(null);
   const [fetchError, setFetchError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => { fetchTracks(); }, [filterCat]);
   useEffect(() => {
@@ -111,16 +113,32 @@ export default function Tracks() {
     if (r) setForm(f => ({ ...f, reciter_id: r.id, reciter_name: r.name }));
   };
 
+  const q = search.toLowerCase();
+  const filtered = search
+    ? tracks.filter(t =>
+        t.title?.toLowerCase().includes(q) ||
+        t.reciter_name?.toLowerCase().includes(q)
+      )
+    : tracks;
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
         <div>
           <h2 className="page-title">Tracks</h2>
-          <p className="page-subtitle">{tracks.length} total tracks</p>
+          <p className="page-subtitle">{tracks.length} total · {filtered.length} shown</p>
         </div>
-        <button className="btn-primary" onClick={() => { resetForm(); setShowForm(p => !p); }}>
-          {showForm ? '✕ Cancel' : '+ Track Add Karein'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Title ya reciter se dhundhein..."
+            width={220}
+          />
+          <button className="btn-primary" onClick={() => { resetForm(); setShowForm(p => !p); }}>
+            {showForm ? '✕ Cancel' : '+ Add Track'}
+          </button>
+        </div>
       </div>
       <ErrorBanner error={fetchError} onRetry={fetchTracks} />
 
@@ -232,8 +250,10 @@ export default function Tracks() {
           <div className="tracks-desktop"><TableSkeleton cols={8} /></div>
           <div className="tracks-mobile"><CardSkeleton /></div>
         </>
-      ) : tracks.length === 0 ? (
-        <p style={{ color: 'var(--grey)', textAlign: 'center', padding: '40px 0' }}>Koi track nahi mila</p>
+      ) : filtered.length === 0 ? (
+        <p style={{ color: 'var(--grey)', textAlign: 'center', padding: '40px 0' }}>
+          {search ? `"${search}" se koi track nahi mila` : 'Koi track nahi mila'}
+        </p>
       ) : (
         <>
           {/* Desktop table */}
@@ -247,7 +267,7 @@ export default function Tracks() {
                 </tr>
               </thead>
               <tbody>
-                {tracks.map(track => (
+                {filtered.map(track => (
                   <TrackTableRow
                     key={track.id}
                     track={track}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
 import ErrorBanner from '../components/ErrorBanner';
+import SearchInput from '../components/SearchInput';
 
 const OCCASIONS = ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat', 'General'];
 const emptyForm = { name: '', city: '', bio: '', is_verified: false, image_url: null };
@@ -17,6 +18,7 @@ export default function Anjumans() {
   const [saveError, setSaveError] = useState('');
   const [selectedAnjuman, setSelectedAnjuman] = useState(null);
   const [fetchError, setFetchError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => { fetchAnjumans(); }, []);
 
@@ -78,16 +80,32 @@ export default function Anjumans() {
     );
   }
 
+  const q = search.toLowerCase();
+  const filtered = search
+    ? anjumans.filter(a =>
+        a.name?.toLowerCase().includes(q) ||
+        a.city?.toLowerCase().includes(q)
+      )
+    : anjumans;
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
         <div>
           <h2 className="page-title">Anjumans</h2>
-          <p className="page-subtitle">City-wise anjumans manage karein</p>
+          <p className="page-subtitle">{anjumans.length} total · {filtered.length} shown</p>
         </div>
-        <button className="btn-primary" onClick={() => { resetForm(); setShowForm(p => !p); }}>
-          {showForm ? '✕ Cancel' : '+ Anjuman Add Karein'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Naam ya city se dhundhein..."
+            width={210}
+          />
+          <button className="btn-primary" onClick={() => { resetForm(); setShowForm(p => !p); }}>
+            {showForm ? '✕ Cancel' : '+ Add Anjuman'}
+          </button>
+        </div>
       </div>
       <ErrorBanner error={fetchError} onRetry={fetchAnjumans} />
 
@@ -149,11 +167,11 @@ export default function Anjumans() {
 
       {loading ? (
         <GridSkeleton />
-      ) : anjumans.length === 0 ? (
-        <EmptyState text="Koi anjuman nahi mili. Oopar se add karein." />
+      ) : filtered.length === 0 ? (
+        <EmptyState text={search ? `"${search}" se koi anjuman nahi mili` : 'Koi anjuman nahi mili. Oopar se add karein.'} />
       ) : (
         <div style={grid}>
-          {anjumans.map(a => (
+          {filtered.map(a => (
             <div key={a.id} style={card}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(212,168,67,.25)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--divider)'; e.currentTarget.style.transform = 'none'; }}

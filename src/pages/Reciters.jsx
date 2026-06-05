@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
 import ErrorBanner from '../components/ErrorBanner';
+import SearchInput from '../components/SearchInput';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana'];
 const LANGUAGES = ['Arabic', 'Urdu', 'Punjabi', 'Hindi', 'Farsi', 'English'];
@@ -30,6 +31,7 @@ export default function Reciters() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [fetchError, setFetchError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => { fetchReciters(); }, []);
 
@@ -86,16 +88,33 @@ export default function Reciters() {
     setForm(emptyForm); setEditId(null); setShowForm(false); setImageFile(null); setSaveError('');
   };
 
+  const q = search.toLowerCase();
+  const filtered = search
+    ? reciters.filter(r =>
+        r.name?.toLowerCase().includes(q) ||
+        r.country?.toLowerCase().includes(q) ||
+        r.categories?.some(c => c.toLowerCase().includes(q))
+      )
+    : reciters;
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
         <div>
           <h2 className="page-title">Reciters</h2>
-          <p className="page-subtitle">{reciters.length} reciters registered</p>
+          <p className="page-subtitle">{reciters.length} total · {filtered.length} shown</p>
         </div>
-        <button className="btn-primary" onClick={() => { resetForm(); setShowForm(p => !p); }}>
-          {showForm ? '✕ Cancel' : '+ Reciter Add Karein'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Naam, country ya category..."
+            width={220}
+          />
+          <button className="btn-primary" onClick={() => { resetForm(); setShowForm(p => !p); }}>
+            {showForm ? '✕ Cancel' : '+ Add Reciter'}
+          </button>
+        </div>
       </div>
       <ErrorBanner error={fetchError} onRetry={fetchReciters} />
 
@@ -217,10 +236,12 @@ export default function Reciters() {
         <GridSkeleton />
       ) : (
         <div style={grid}>
-          {reciters.length === 0 && (
-            <p style={{ color: 'var(--grey)', gridColumn: '1/-1', padding: '40px 0', textAlign: 'center' }}>Koi reciter nahi</p>
+          {filtered.length === 0 && (
+            <p style={{ color: 'var(--grey)', gridColumn: '1/-1', padding: '40px 0', textAlign: 'center' }}>
+              {search ? `"${search}" se koi reciter nahi mila` : 'Koi reciter nahi'}
+            </p>
           )}
-          {reciters.map(r => <ReciterCard key={r.id} r={r} onEdit={handleEdit} onDelete={handleDelete} />)}
+          {filtered.map(r => <ReciterCard key={r.id} r={r} onEdit={handleEdit} onDelete={handleDelete} />)}
         </div>
       )}
     </div>
