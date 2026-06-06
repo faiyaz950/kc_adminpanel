@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
 import ErrorBanner from '../components/ErrorBanner';
@@ -51,8 +51,12 @@ export default function Tracks() {
   const [audioPreviewUrl, setAudioPreviewUrl] = useState(null);
   const [fetchError, setFetchError] = useState('');
   const [search, setSearch] = useState('');
+  const [filterReciter, setFilterReciter] = useState(null);
 
-  useEffect(() => { fetchTracks(); }, [filterCat]);
+  useEffect(() => {
+    setFilterReciter(null);
+    fetchTracks();
+  }, [filterCat]);
   useEffect(() => {
     client.get('/reciters').then(r => setReciters(r.data)).catch(() => {});
   }, []);
@@ -115,20 +119,51 @@ export default function Tracks() {
     if (r) setForm(f => ({ ...f, reciter_id: r.id, reciter_name: r.name }));
   };
 
+  const recitersWithTracks = useMemo(() => {
+    const map = new Map();
+    for (const t of tracks) {
+      const name = (t.reciter_name || '').trim();
+      if (!name && !t.reciter_id) continue;
+      const key = t.reciter_id ? `id:${t.reciter_id}` : `name:${name.toLowerCase()}`;
+      if (!map.has(key)) {
+        const r = reciters.find(rec => rec.id == t.reciter_id);
+        map.set(key, {
+          key,
+          id: t.reciter_id || null,
+          name: name || r?.name || 'Unknown',
+          image_url: r?.image_url || null,
+          trackCount: 0,
+        });
+      }
+      map.get(key).trackCount += 1;
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tracks, reciters]);
+
+  const matchesReciter = (track, rec) => {
+    if (rec.id) return track.reciter_id == rec.id;
+    return (track.reciter_name || '').trim().toLowerCase() === rec.name.toLowerCase();
+  };
+
   const q = search.toLowerCase();
-  const filtered = search
-    ? tracks.filter(t =>
-        t.title?.toLowerCase().includes(q) ||
-        t.reciter_name?.toLowerCase().includes(q)
-      )
-    : tracks;
+  const filtered = tracks.filter(t => {
+    if (filterReciter && !matchesReciter(t, filterReciter)) return false;
+    if (!q) return true;
+    return (
+      t.title?.toLowerCase().includes(q) ||
+      t.reciter_name?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="page-wrapper">
       <div className="page-header">
         <div>
           <h2 className="page-title">Tracks</h2>
-          <p className="page-subtitle">{tracks.length} total · {filtered.length} shown</p>
+          <p className="page-subtitle">
+            {tracks.length} total · {filtered.length} shown
+            {filterReciter ? ` · ${filterReciter.name}` : ''}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <SearchInput
@@ -143,6 +178,108 @@ export default function Tracks() {
         </div>
       </div>
       <ErrorBanner error={fetchError} onRetry={fetchTracks} />
+
+      {/* Reciters with tracks — round filter cards */}
+      {!loading && recitersWithTracks.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ color: 'var(--grey)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+              Reciters ({recitersWithTracks.length})
+            </span>
+            {filterReciter && (
+              <button
+                type="button"
+                onClick={() => setFilterReciter(null)}
+                style={{
+                  padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                  background: 'rgba(212,168,67,.12)', color: 'var(--gold)',
+                  border: '1px solid rgba(212,168,67,.35)',
+                }}
+              >
+                ✕ Filter hataein — sab dikhao
+              </button>
+            )}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              gap: 14,
+              overflowX: 'auto',
+              paddingBottom: 6,
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {recitersWithTracks.map(r => {
+              const active = filterReciter?.key === r.key;
+              const initials = r.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+              return (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => setFilterReciter(active ? null : r)}
+                  title={`${r.name} — ${r.trackCount} track${r.trackCount !== 1 ? 's' : ''}`}
+                  style={{
+                    flex: '0 0 auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: 76,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: `2.5px solid ${active ? 'var(--gold)' : 'var(--divider)'}`,
+                      boxShadow: active ? '0 0 0 3px rgba(212,168,67,.2)' : 'none',
+                      background: 'var(--bg-surface)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'border-color .15s, box-shadow .15s',
+                    }}
+                  >
+                    {r.image_url ? (
+                      <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ color: active ? 'var(--gold)' : 'var(--grey)', fontSize: 18, fontWeight: 800 }}>
+                        {initials || '?'}
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    style={{
+                      color: active ? 'var(--gold)' : 'var(--grey-light)',
+                      fontSize: 10,
+                      fontWeight: active ? 700 : 600,
+                      textAlign: 'center',
+                      lineHeight: 1.25,
+                      maxWidth: 76,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                    }}
+                  >
+                    {r.name}
+                  </span>
+                  <span style={{ color: 'var(--grey-dark)', fontSize: 9, marginTop: -4 }}>
+                    {r.trackCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Form */}
       {showForm && (
@@ -254,7 +391,11 @@ export default function Tracks() {
         </>
       ) : filtered.length === 0 ? (
         <p style={{ color: 'var(--grey)', textAlign: 'center', padding: '40px 0' }}>
-          {search ? `"${search}" se koi track nahi mila` : 'Koi track nahi mila'}
+          {filterReciter
+            ? `${filterReciter.name} ke liye koi track nahi mila`
+            : search
+            ? `"${search}" se koi track nahi mila`
+            : 'Koi track nahi mila'}
         </p>
       ) : (
         <>
@@ -285,7 +426,7 @@ export default function Tracks() {
 
           {/* Mobile cards */}
           <div className="tracks-mobile track-cards-list">
-            {tracks.map(track => (
+            {filtered.map(track => (
               <TrackCard
                 key={track.id}
                 track={track}
