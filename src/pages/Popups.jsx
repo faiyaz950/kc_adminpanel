@@ -7,8 +7,9 @@ export default function Popups() {
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm]         = useState({ title: '', image_url: '', link_url: '', is_active: true, sort_order: 0 });
+  const [form, setForm]         = useState({ title: '', link_url: '', is_active: true, sort_order: 0 });
   const [editId, setEditId]     = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview]   = useState(null);
 
   const load = () => {
@@ -23,32 +24,41 @@ export default function Popups() {
 
   const openAdd = () => {
     setEditId(null);
-    setForm({ title: '', image_url: '', link_url: '', is_active: true, sort_order: popups.length });
+    setForm({ title: '', link_url: '', is_active: true, sort_order: popups.length });
+    setImageFile(null);
     setPreview(null);
     setShowForm(true);
   };
 
   const openEdit = (p) => {
     setEditId(p.id);
-    setForm({ title: p.title || '', image_url: p.image_url, link_url: p.link_url || '', is_active: p.is_active, sort_order: p.sort_order });
+    setForm({ title: p.title || '', link_url: p.link_url || '', is_active: p.is_active, sort_order: p.sort_order });
+    setImageFile(null);
     setPreview(p.image_url);
     setShowForm(true);
   };
 
   const handleSave = async () => {
-    if (!form.image_url.trim()) { setError('Image URL is required'); return; }
+    if (!editId && !imageFile) { setError('Please select an image'); return; }
     setSaving(true);
     setError('');
     try {
+      const fd = new FormData();
+      if (form.title)    fd.append('title', form.title);
+      if (form.link_url) fd.append('link_url', form.link_url);
+      fd.append('is_active', form.is_active ? '1' : '0');
+      fd.append('sort_order', String(form.sort_order));
+      if (imageFile) fd.append('image', imageFile);
       if (editId) {
-        await client.post(`/popups/${editId}`, form);
+        await client.post(`/popups/${editId}`, fd);
       } else {
-        await client.post('/popups', form);
+        await client.post('/popups', fd);
       }
       setShowForm(false);
+      setImageFile(null);
       load();
     } catch {
-      setError('Save failed');
+      setError('Save failed — check image format (JPEG/PNG/WebP, max 5MB)');
     } finally {
       setSaving(false);
     }
@@ -133,25 +143,28 @@ export default function Popups() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ color: 'var(--grey)', fontSize: 11, fontWeight: 700, letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>IMAGE URL *</label>
-            <input
-              style={inputStyle}
-              placeholder="https://..."
-              value={form.image_url}
-              onChange={e => { setForm(f => ({ ...f, image_url: e.target.value })); setPreview(e.target.value); }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 16 }}>
             <label style={{ color: 'var(--grey)', fontSize: 11, fontWeight: 700, letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
-              LINK URL <span style={{ color: 'var(--grey-dark)', fontWeight: 500, letterSpacing: 0 }}>(optional — tap on image opens this)</span>
+              IMAGE {editId ? '(leave empty to keep current)' : '*'}
             </label>
             <input
-              style={inputStyle}
-              placeholder="https://example.com/page"
-              value={form.link_url}
-              onChange={e => setForm(f => ({ ...f, link_url: e.target.value }))}
+              type="file"
+              accept="image/jpeg,image/png,image/jpg,image/webp"
+              onChange={e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setImageFile(file);
+                setPreview(URL.createObjectURL(file));
+              }}
+              style={{
+                ...inputStyle,
+                padding: '8px 14px',
+                cursor: 'pointer',
+                color: 'var(--grey)',
+              }}
             />
+            <p style={{ color: 'var(--grey-dark)', fontSize: 11, margin: '6px 0 0' }}>
+              JPEG, PNG or WebP — max 5 MB
+            </p>
           </div>
 
           {/* Preview */}
@@ -166,6 +179,18 @@ export default function Popups() {
               />
             </div>
           )}
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ color: 'var(--grey)', fontSize: 11, fontWeight: 700, letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
+              LINK URL <span style={{ color: 'var(--grey-dark)', fontWeight: 500, letterSpacing: 0 }}>(optional — tap on image opens this)</span>
+            </label>
+            <input
+              style={inputStyle}
+              placeholder="https://example.com/page"
+              value={form.link_url}
+              onChange={e => setForm(f => ({ ...f, link_url: e.target.value }))}
+            />
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
