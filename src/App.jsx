@@ -7,6 +7,7 @@ import Reciters from './pages/Reciters';
 import Anjumans from './pages/Anjumans';
 import Users from './pages/Users';
 import Messages from './pages/Messages';
+import Popups from './pages/Popups';
 import Sidebar from './components/Sidebar';
 
 function Layout({ children }) {
@@ -125,6 +126,7 @@ export default function App() {
             <Route path="/anjumans" element={<Anjumans />} />
             <Route path="/users" element={<Users />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/popups" element={<Popups />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
