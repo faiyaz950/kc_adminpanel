@@ -33,7 +33,7 @@ const CAT_COLORS = {
   tarana:   { color: '#EC4899', bg: 'rgba(236,72,153,.12)',  border: 'rgba(236,72,153,.3)'  },
 };
 
-const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: 'Urdu', occasion: '', duration: 0, is_featured: false, lyrics: '' };
+const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: 'Urdu', occasion: '', is_featured: false, lyrics: '' };
 
 export default function Tracks() {
   const [tracks, setTracks] = useState([]);
@@ -73,7 +73,6 @@ export default function Tracks() {
     try {
       const fd = new FormData();
       ['title', 'category', 'reciter_id', 'reciter_name', 'language', 'occasion', 'lyrics'].forEach(k => fd.append(k, form[k] || ''));
-      fd.append('duration', form.duration || 0);
       fd.append('is_featured', form.is_featured ? '1' : '0');
       if (audioFile) fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
@@ -179,9 +178,6 @@ export default function Tracks() {
                   {(OCCASIONS[form.category] || []).map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </FormField>
-              <FormField label="Duration (seconds)">
-                <input className="form-input" type="number" value={form.duration} onChange={e => setForm(f => ({ ...f, duration: +e.target.value }))} />
-              </FormField>
               <FormField label="Featured">
                 <select className="form-input" value={form.is_featured ? 'yes' : 'no'} onChange={e => setForm(f => ({ ...f, is_featured: e.target.value === 'yes' }))}>
                   <option value="no">No</option>
@@ -189,6 +185,9 @@ export default function Tracks() {
                 </select>
               </FormField>
               <FormField label="MP3 / Audio File" fullWidth>
+                <p style={{ color: 'var(--grey)', fontSize: 11, marginBottom: 8 }}>
+                  Duration MP3 se automatically detect hogi — manually set karne ki zaroorat nahi.
+                </p>
                 <input type="file" accept="audio/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }}
                   onChange={e => {
                     const f = e.target.files[0];
