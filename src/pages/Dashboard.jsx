@@ -40,31 +40,21 @@ export default function Dashboard() {
   const fetchStats = () => {
     setLoading(true);
     setApiError('');
-    Promise.allSettled([
-      client.get('/tracks'),
-      client.get('/reciters'),
-      client.get('/anjumans'),
-      client.get('/users'),
-    ]).then(([t, r, a, u]) => {
-      const anyFailed = [t, r, a, u].some(x => x.status === 'rejected');
-      if (anyFailed) {
-        const firstErr = [t, r, a, u].find(x => x.status === 'rejected');
-        const status = firstErr?.reason?.response?.status;
+    client.get('/admin/summary')
+      .then(r => setStats(r.data))
+      .catch(err => {
+        const status = err?.response?.status;
         setApiError(
           status === 500
             ? 'Server error (500) — backend mein koi issue hai. Laravel logs check karein. Migration run hua? (php artisan migrate)'
+            : status === 429
+            ? 'Bahut zyada requests (429). 30 second wait karein aur Dobara Try karein.'
             : status === 403
             ? 'Admin token expire ho gaya — dobara login karein.'
             : `API error (${status ?? 'network'}) — backend reachable hai? URL: ${import.meta.env.VITE_API_URL}`
         );
-      }
-      setStats({
-        tracks:   t.status === 'fulfilled' ? t.value.data.length : 0,
-        reciters: r.status === 'fulfilled' ? r.value.data.length : 0,
-        anjumans: a.status === 'fulfilled' ? a.value.data.length : 0,
-        users:    u.status === 'fulfilled' ? u.value.data.length : 0,
-      });
-    }).finally(() => setLoading(false));
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchStats(); }, []);

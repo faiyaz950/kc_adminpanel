@@ -59,9 +59,8 @@ export default function Reciters() {
       fd.append('categories', JSON.stringify(form.categories || []));
       fd.append('languages', JSON.stringify(form.languages || []));
       if (imageFile) fd.append('image', imageFile);
-      const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
-      if (editId) await client.post(`/reciters/${editId}`, fd, opts);
-      else await client.post('/reciters', fd, opts);
+      if (editId) await client.post(`/reciters/${editId}`, fd);
+      else await client.post('/reciters', fd);
       resetForm(); fetchReciters();
     } catch (err) {
       setSaveError(formatApiError(err, 'Reciter save nahi hua.'));

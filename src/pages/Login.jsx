@@ -8,6 +8,16 @@ export default function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const getDeviceName = () => {
+    const key = 'kc_admin_device';
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = `web-admin-${crypto.randomUUID()}`;
+      localStorage.setItem(key, id);
+    }
+    return id;
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -15,8 +25,8 @@ export default function Login({ onLogin }) {
     try {
       const res = await client.post('/login', {
         email: email.trim(),
-        password: password.trim(),
-        device_name: `web-${navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop'}-${Date.now()}`,
+        password,
+        device_name: getDeviceName(),
       });
       const isAdmin = res.data.user.is_admin === true || res.data.user.is_admin === 1;
       if (!isAdmin) {
@@ -34,6 +44,8 @@ export default function Login({ onLogin }) {
 
       if (!err.response) {
         setError(`Network error: ${err.message || 'Request failed'} (API: ${API_BASE_URL})`);
+      } else if (err.response.status === 429) {
+        setError(apiMsg || 'Bahut zyada login attempts (429). 1 minute wait karein, phir dubara try karein.');
       } else {
         setError(apiMsg || `Login failed (HTTP ${err.response.status})`);
       }

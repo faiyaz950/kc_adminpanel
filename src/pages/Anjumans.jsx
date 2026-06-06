@@ -39,9 +39,8 @@ export default function Anjumans() {
       fd.append('name', form.name); fd.append('city', form.city);
       fd.append('bio', form.bio || ''); fd.append('is_verified', form.is_verified ? '1' : '0');
       if (imageFile) fd.append('image', imageFile);
-      const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
-      if (editId) await client.post(`/anjumans/${editId}`, fd, opts);
-      else await client.post('/anjumans', fd, opts);
+      if (editId) await client.post(`/anjumans/${editId}`, fd);
+      else await client.post('/anjumans', fd);
       resetForm(); fetchAnjumans();
     } catch (err) {
       setSaveError(formatApiError(err, 'Anjuman save nahi hua.'));
@@ -281,8 +280,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
       fd.append('bio', anjumanForm.bio || '');
       fd.append('is_verified', anjumanForm.is_verified ? '1' : '0');
       if (anjumanImageFile) fd.append('image', anjumanImageFile);
-      const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
-      const { data } = await client.post(`/anjumans/${anjumanInfo.id}`, fd, opts);
+      const { data } = await client.post(`/anjumans/${anjumanInfo.id}`, fd);
       setAnjumanInfo(data);
       onAnjumanUpdated?.(data);
       resetAnjumanForm();
@@ -315,9 +313,8 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
       fd.append('occasion', occasion);
       if (audioFile) fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
-      const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
-      if (editId) await client.post(`/anjuman-tracks/${editId}`, fd, opts);
-      else await client.post(`/anjumans/${anjumanInfo.id}/tracks`, fd, opts);
+      if (editId) await client.post(`/anjuman-tracks/${editId}`, fd);
+      else await client.post(`/anjumans/${anjumanInfo.id}/tracks`, fd);
       resetTrackForm();
       fetchTracks();
     } catch (err) {

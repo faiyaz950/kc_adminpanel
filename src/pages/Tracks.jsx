@@ -69,6 +69,10 @@ export default function Tracks() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!editId && !audioFile) {
+      setSaveError('Naya track ke liye MP3 / audio file zaroori hai.');
+      return;
+    }
     setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
@@ -76,9 +80,8 @@ export default function Tracks() {
       fd.append('is_featured', form.is_featured ? '1' : '0');
       if (audioFile) fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
-      const opts = { headers: { 'Content-Type': 'multipart/form-data' } };
-      if (editId) await client.post(`/tracks/${editId}`, fd, opts);
-      else await client.post('/tracks', fd, opts);
+      if (editId) await client.post(`/tracks/${editId}`, fd);
+      else await client.post('/tracks', fd);
       resetForm(); fetchTracks();
     } catch (err) {
       console.error('[tracks save]', err.response?.status, err.response?.data || err.message);

@@ -9,11 +9,14 @@ export function formatApiError(err, fallback = 'Request failed.') {
   }
 
   const msg = data.message;
-  if (msg && msg !== 'Server Error') return msg;
+  if (msg) return msg;
 
   const status = err?.response?.status;
   if (status === 500) {
     return 'Server error (500). Backend logs check karein — aksar category DB migration ya file upload size ki wajah se hota hai.';
+  }
+  if (status === 429) {
+    return 'Bahut zyada requests (429). 30–60 second wait karein, phir dubara try karein. Agar bar bar aaye to Hostinger rate limit ho sakta hai.';
   }
   if (status === 403) return 'Admin access chahiye. Dobara login karein.';
   if (status === 401) return 'Session expire ho gaya. Dobara login karein.';
