@@ -10,6 +10,9 @@ const COUNTRIES = [
   'India', 'Pakistan', 'Iraq', 'Iran', 'UAE', 'UK', 'USA',
   'Canada', 'Kuwait', 'Bahrain', 'Saudi Arabia', 'Australia', 'Other',
 ];
+const CAT_LABELS = { naat: 'Masaib' };
+const catLabel = c => CAT_LABELS[c] || (c.charAt(0).toUpperCase() + c.slice(1));
+
 const CAT_COLORS = {
   dua:      { color: '#06B6D4', bg: 'rgba(6,182,212,.12)',   border: 'rgba(6,182,212,.3)'   },
   noha:     { color: '#EF4444', bg: 'rgba(239,68,68,.12)',   border: 'rgba(239,68,68,.3)'   },
@@ -169,7 +172,7 @@ export default function Reciters() {
                           border: `1px solid ${checked ? cm.border : 'var(--divider)'}`,
                           transition: 'all .15s',
                         }}>
-                        {c}
+                        {catLabel(c)}
                       </button>
                     );
                   })}
@@ -291,7 +294,7 @@ function ReciterCard({ r, onEdit, onDelete }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
             {r.categories.map(c => {
               const cm = CAT_COLORS[c] || {};
-              return <span key={c} style={{ background: cm.bg, color: cm.color, border: `1px solid ${cm.border}`, padding: '2px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>{c}</span>;
+              return <span key={c} style={{ background: cm.bg, color: cm.color, border: `1px solid ${cm.border}`, padding: '2px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>{catLabel(c)}</span>;
             })}
           </div>
         )}

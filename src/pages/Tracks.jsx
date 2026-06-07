@@ -23,6 +23,9 @@ const OCCASIONS = {
   kids:     ['Muharram', 'Wiladat', 'Ramzan', 'General'],
   tarana:   ['Muharram', 'Wiladat', 'Independence Day', 'General'],
 };
+const CAT_LABELS = { naat: 'Masaib' };
+const catLabel = c => CAT_LABELS[c] || (c.charAt(0).toUpperCase() + c.slice(1));
+
 const CAT_COLORS = {
   dua:      { color: '#06B6D4', bg: 'rgba(6,182,212,.12)',   border: 'rgba(6,182,212,.3)'   },
   noha:     { color: '#EF4444', bg: 'rgba(239,68,68,.12)',   border: 'rgba(239,68,68,.3)'   },
@@ -295,7 +298,7 @@ export default function Tracks() {
               </FormField>
               <FormField label="Category">
                 <select className="form-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value, language: '', occasion: '' }))}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                  {CATEGORIES.map(c => <option key={c} value={c}>{catLabel(c)}</option>)}
                 </select>
               </FormField>
               <FormField label="Reciter (list se chunein)">
@@ -377,7 +380,7 @@ export default function Tracks() {
                 border:     `1px solid ${active ? (meta ? meta.border : 'rgba(212,168,67,.4)') : 'var(--divider)'}`,
                 transition: 'all .15s',
               }}>
-              {c ? c.charAt(0).toUpperCase() + c.slice(1) : 'All'}
+              {c ? catLabel(c) : 'All'}
             </button>
           );
         })}
@@ -466,7 +469,7 @@ function TrackCover({ track, cm, size = 36 }) {
 function CategoryBadge({ category, cm }) {
   return (
     <span style={{ background: cm.bg, color: cm.color, border: `1px solid ${cm.border}`, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-      {category}
+      {catLabel(category)}
     </span>
   );
 }
