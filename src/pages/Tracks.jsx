@@ -43,7 +43,10 @@ const formatPlayCount = (n) => {
   return String(count);
 };
 
-const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: 'Urdu', occasion: '', is_featured: false, lyrics: '' };
+const CURRENT_YEAR = new Date().getFullYear();
+const TRACK_YEARS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURRENT_YEAR - i);
+
+const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: 'Urdu', occasion: '', year: '', is_featured: false, lyrics: '' };
 
 export default function Tracks() {
   const [tracks, setTracks] = useState([]);
@@ -90,7 +93,7 @@ export default function Tracks() {
     setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
-      ['title', 'category', 'reciter_id', 'reciter_name', 'language', 'occasion', 'lyrics'].forEach(k => fd.append(k, form[k] || ''));
+      ['title', 'category', 'reciter_id', 'reciter_name', 'language', 'occasion', 'year', 'lyrics'].forEach(k => fd.append(k, form[k] || ''));
       fd.append('is_featured', form.is_featured ? '1' : '0');
       if (audioFile) fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
@@ -104,7 +107,8 @@ export default function Tracks() {
   };
 
   const handleEdit = (track) => {
-    setForm(track); setEditId(track.id); setShowForm(true);
+    setForm({ ...track, year: track.year ? String(track.year) : '' });
+    setEditId(track.id); setShowForm(true);
     setAudioFile(null); setImageFile(null); setAudioPreviewUrl(null); setSaveError('');
     window.scrollTo(0, 0);
   };
@@ -333,6 +337,12 @@ export default function Tracks() {
                   {(OCCASIONS[form.category] || []).map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </FormField>
+              <FormField label="Year">
+                <select className="form-input" value={form.year || ''} onChange={e => setForm(f => ({ ...f, year: e.target.value }))}>
+                  <option value="">-- Select Year --</option>
+                  {TRACK_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </FormField>
               <FormField label="Featured">
                 <select className="form-input" value={form.is_featured ? 'yes' : 'no'} onChange={e => setForm(f => ({ ...f, is_featured: e.target.value === 'yes' }))}>
                   <option value="no">No</option>
@@ -415,7 +425,7 @@ export default function Tracks() {
       {/* Track list */}
       {loading ? (
         <>
-          <div className="tracks-desktop"><TableSkeleton cols={9} /></div>
+          <div className="tracks-desktop"><TableSkeleton cols={10} /></div>
           <div className="tracks-mobile"><CardSkeleton /></div>
         </>
       ) : filtered.length === 0 ? (
@@ -433,7 +443,7 @@ export default function Tracks() {
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Cover', 'Title', 'Category', 'Reciter', 'Language', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => (
+                  {['Cover', 'Title', 'Category', 'Reciter', 'Language', 'Year', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -519,6 +529,23 @@ function PlayCountBadge({ count }) {
   );
 }
 
+function YearBadge({ year }) {
+  if (!year) return <span style={{ color: 'var(--grey-dark)', fontSize: 12 }}>—</span>;
+  return (
+    <span style={{
+      background: 'var(--bg-surface)',
+      color: 'var(--grey-light)',
+      border: '1px solid var(--divider)',
+      padding: '3px 10px',
+      borderRadius: 20,
+      fontSize: 11,
+      fontWeight: 700,
+    }}>
+      {year}
+    </span>
+  );
+}
+
 function CategoryBadge({ category, cm }) {
   return (
     <span style={{ background: cm.bg, color: cm.color, border: `1px solid ${cm.border}`, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
@@ -537,6 +564,7 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
         <td><CategoryBadge category={track.category} cm={cm} /></td>
         <td style={{ color: 'var(--grey-light)', fontSize: 13 }}>{track.reciter_name || '—'}</td>
         <td style={{ fontSize: 13 }}>{track.language || '—'}</td>
+        <td><YearBadge year={track.year} /></td>
         <td><PlayCountBadge count={track.play_count} /></td>
         <td>
           {track.is_featured
@@ -559,7 +587,7 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
       </tr>
       {previewTrackId === track.id && (
         <tr>
-          <td colSpan={9} style={{ background: 'var(--bg-surface)', padding: '10px 16px' }}>
+          <td colSpan={10} style={{ background: 'var(--bg-surface)', padding: '10px 16px' }}>
             <audio controls autoPlay src={track.audio_url} style={{ width: '100%', height: 36, accentColor: 'var(--gold)' }} />
           </td>
         </tr>
@@ -582,6 +610,7 @@ function TrackCard({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete 
           <div className="track-card-tags">
             <CategoryBadge category={track.category} cm={cm} />
             <PlayCountBadge count={track.play_count} />
+            <YearBadge year={track.year} />
             {track.language && (
               <span style={{ background: 'var(--bg-surface)', color: 'var(--grey)', border: '1px solid var(--divider)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
                 {track.language}
