@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
-import { readCache, readStaleCache, writeCache, KEYS, readBootstrapReciters } from '../api/listCache';
+import { readCache, readStaleCache, writeCache, KEYS, readBootstrapReciters, ensureArray } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -41,9 +41,9 @@ export default function Reciters() {
 
   const fetchReciters = async (force = false) => {
     const fresh = !force ? readCache(KEYS.RECITERS) : null;
-    const stale = readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters();
+    const stale = ensureArray(readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters());
 
-    if (stale?.length) {
+    if (stale.length) {
       setReciters(stale);
       setLoading(false);
       if (fresh && !force) {
@@ -58,12 +58,13 @@ export default function Reciters() {
 
     try {
       const res = await client.get('/reciters');
-      setReciters(res.data);
-      writeCache(KEYS.RECITERS, res.data);
+      const list = ensureArray(res.data);
+      setReciters(list);
+      writeCache(KEYS.RECITERS, list);
       setFetchError('');
     } catch (err) {
-      const fallback = readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters();
-      if (fallback?.length) {
+      const fallback = ensureArray(readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters());
+      if (fallback.length) {
         setReciters(fallback);
         setFetchError('Server busy — saved reciters dikha rahe hain. 5 minute baad refresh karein.');
       } else {
@@ -122,7 +123,7 @@ export default function Reciters() {
     ? reciters.filter(r =>
         r.name?.toLowerCase().includes(q) ||
         r.country?.toLowerCase().includes(q) ||
-        r.categories?.some(c => c.toLowerCase().includes(q))
+        (Array.isArray(r.categories) ? r.categories : []).some(c => String(c).toLowerCase().includes(q))
       )
     : reciters;
 

@@ -3,6 +3,8 @@ import { formatApiError } from './errors';
 
 export const CACHE_TTL_MS = 30 * 60 * 1000;
 
+export const ensureArray = (value) => (Array.isArray(value) ? value : []);
+
 export const KEYS = {
   TRACKS_BOOTSTRAP: 'kc_admin_tracks_v3',
   RECITERS: 'kc_admin_reciters_v1',
@@ -51,13 +53,17 @@ export function readBootstrapReciters() {
 }
 
 export function writeBootstrap(tracks, reciters) {
+  const trackList = ensureArray(tracks);
+  const reciterList = ensureArray(reciters);
+  if (!trackList.length && !reciterList.length) return;
+
   try {
     localStorage.setItem(KEYS.TRACKS_BOOTSTRAP, JSON.stringify({
-      tracks,
-      reciters,
+      tracks: trackList,
+      reciters: reciterList,
       ts: Date.now(),
     }));
-    if (reciters) writeCache(KEYS.RECITERS, reciters);
+    if (reciterList.length) writeCache(KEYS.RECITERS, reciterList);
   } catch {
     // ignore
   }

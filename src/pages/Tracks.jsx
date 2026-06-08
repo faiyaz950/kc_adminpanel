@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import { ensureArray } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -84,7 +85,7 @@ export default function Tracks() {
       const raw = localStorage.getItem(TRACKS_CACHE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (!parsed?.tracks || Date.now() - parsed.ts > maxAgeMs) return null;
+      if (!Array.isArray(parsed?.tracks) || Date.now() - parsed.ts > maxAgeMs) return null;
       return parsed;
     } catch {
       return null;
@@ -104,8 +105,8 @@ export default function Tracks() {
   };
 
   const applyTracksPayload = (tracks, reciters) => {
-    setTracks(tracks ?? []);
-    setReciters(reciters ?? []);
+    setTracks(ensureArray(tracks));
+    setReciters(ensureArray(reciters));
   };
 
   const loadBootstrap = async () => {

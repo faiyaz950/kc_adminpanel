@@ -1,5 +1,5 @@
 import client from './client';
-import { CACHE_TTL_MS, KEYS, writeBootstrap } from './listCache';
+import { CACHE_TTL_MS, KEYS, writeBootstrap, ensureArray } from './listCache';
 
 let inflight = null;
 
@@ -14,18 +14,25 @@ function readBootstrapMeta() {
 
 export function prefetchTracksBootstrap(force = false) {
   const meta = readBootstrapMeta();
-  if (!force && meta?.tracks && Date.now() - (meta.ts || 0) < CACHE_TTL_MS) {
-    return Promise.resolve({ tracks: meta.tracks, reciters: meta.reciters });
+  if (!force && Array.isArray(meta?.tracks) && Date.now() - (meta.ts || 0) < CACHE_TTL_MS) {
+    return Promise.resolve({
+      tracks: ensureArray(meta.tracks),
+      reciters: ensureArray(meta.reciters),
+    });
   }
 
   if (inflight) return inflight;
 
   inflight = client.get('/tracks/bootstrap')
     .then(res => {
-      writeBootstrap(res.data.tracks, res.data.reciters);
-      return res.data;
+      const tracks = ensureArray(res.data?.tracks);
+      const reciters = ensureArray(res.data?.reciters);
+      writeBootstrap(tracks, reciters);
+      return { tracks, reciters };
     })
-    .catch(() => meta ? { tracks: meta.tracks, reciters: meta.reciters } : null)
+    .catch(() => (meta && Array.isArray(meta.tracks)
+      ? { tracks: ensureArray(meta.tracks), reciters: ensureArray(meta.reciters) }
+      : null))
     .finally(() => { inflight = null; });
 
   return inflight;
