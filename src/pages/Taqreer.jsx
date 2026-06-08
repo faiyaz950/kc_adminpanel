@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import { fetchList, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -30,14 +31,15 @@ export default function Taqreer() {
 
   useEffect(() => { fetchUlemas(); }, []);
 
-  const fetchUlemas = () => {
-    setLoading(true);
-    setFetchError('');
-    client.get('/ulemas')
-      .then(r => setUlemas(r.data))
-      .catch(err => setFetchError(formatApiError(err, 'Ulema load nahi hue. Backend ya network check karein.')))
-      .finally(() => setLoading(false));
-  };
+  const fetchUlemas = (force = false) => fetchList({
+    key: KEYS.ULEMAS,
+    url: '/ulemas',
+    force,
+    setData: setUlemas,
+    setLoading,
+    setError: setFetchError,
+    errorFallback: 'Ulema load nahi hue. 2 minute wait karein.',
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();

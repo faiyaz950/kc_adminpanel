@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import { fetchList, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -22,14 +23,15 @@ export default function AshraMajlis() {
 
   useEffect(() => { fetchMaulanas(); }, []);
 
-  const fetchMaulanas = () => {
-    setLoading(true);
-    setFetchError('');
-    client.get('/maulanas')
-      .then(r => setMaulanas(r.data))
-      .catch(err => setFetchError(formatApiError(err, 'Maulanas load nahi hue. Backend ya network check karein.')))
-      .finally(() => setLoading(false));
-  };
+  const fetchMaulanas = (force = false) => fetchList({
+    key: KEYS.MAULANAS,
+    url: '/maulanas',
+    force,
+    setData: setMaulanas,
+    setLoading,
+    setError: setFetchError,
+    errorFallback: 'Maulanas load nahi hue. 2 minute wait karein.',
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -11,6 +11,7 @@ import Users from './pages/Users';
 import Messages from './pages/Messages';
 import Popups from './pages/Popups';
 import Sidebar from './components/Sidebar';
+import { prefetchTracksBootstrap } from './api/prefetch';
 
 function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -87,6 +88,7 @@ export default function App() {
     if (stored && token) {
       try {
         setUser(JSON.parse(stored));
+        prefetchTracksBootstrap();
       } catch {
         localStorage.removeItem('user');
         localStorage.removeItem('token');
@@ -96,6 +98,11 @@ export default function App() {
       setUser(null);
     }
   }, []);
+
+  const handleLogin = (loggedInUser) => {
+    setUser(loggedInUser);
+    prefetchTracksBootstrap(true);
+  };
 
   if (user === undefined) {
     return (
@@ -118,7 +125,7 @@ export default function App() {
   return (
     <BrowserRouter>
       {!user ? (
-        <Login onLogin={setUser} />
+        <Login onLogin={handleLogin} />
       ) : (
         <Layout>
           <Routes>

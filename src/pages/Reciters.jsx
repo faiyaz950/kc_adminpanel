@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import { readCache, readStaleCache, writeCache, KEYS, readBootstrapReciters } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -38,13 +39,39 @@ export default function Reciters() {
 
   useEffect(() => { fetchReciters(); }, []);
 
-  const fetchReciters = () => {
-    setLoading(true);
+  const fetchReciters = async (force = false) => {
+    const fresh = !force ? readCache(KEYS.RECITERS) : null;
+    const stale = readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters();
+
+    if (stale?.length) {
+      setReciters(stale);
+      setLoading(false);
+      if (fresh && !force) {
+        setFetchError('');
+        return;
+      }
+    } else {
+      setLoading(true);
+    }
+
     setFetchError('');
-    client.get('/reciters')
-      .then(r => setReciters(r.data))
-      .catch(err => setFetchError(formatApiError(err, 'Reciters load nahi hue. Backend ya network check karein.')))
-      .finally(() => setLoading(false));
+
+    try {
+      const res = await client.get('/reciters');
+      setReciters(res.data);
+      writeCache(KEYS.RECITERS, res.data);
+      setFetchError('');
+    } catch (err) {
+      const fallback = readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters();
+      if (fallback?.length) {
+        setReciters(fallback);
+        setFetchError('Server busy — saved reciters dikha rahe hain. 5 minute baad refresh karein.');
+      } else {
+        setFetchError(formatApiError(err, 'Reciters load nahi hue. 2 minute wait karein.'));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggle = (arr, val) => arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
@@ -64,7 +91,7 @@ export default function Reciters() {
       if (imageFile) fd.append('image', imageFile);
       if (editId) await client.post(`/reciters/${editId}`, fd);
       else await client.post('/reciters', fd);
-      resetForm(); fetchReciters();
+      resetForm(); fetchReciters(true);
     } catch (err) {
       setSaveError(formatApiError(err, 'Reciter save nahi hua.'));
     } finally { setSaving(false); }
@@ -118,7 +145,7 @@ export default function Reciters() {
           </button>
         </div>
       </div>
-      <ErrorBanner error={fetchError} onRetry={fetchReciters} />
+      <ErrorBanner error={fetchError} onRetry={() => fetchReciters(true)} />
 
       {showForm && (
         <div className="form-card" style={{ marginBottom: 24 }}>

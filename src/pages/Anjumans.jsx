@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import { fetchList, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -22,14 +23,15 @@ export default function Anjumans() {
 
   useEffect(() => { fetchAnjumans(); }, []);
 
-  const fetchAnjumans = () => {
-    setLoading(true);
-    setFetchError('');
-    client.get('/anjumans')
-      .then(r => setAnjumans(r.data))
-      .catch(err => setFetchError(formatApiError(err, 'Anjumans load nahi hue. Backend ya network check karein.')))
-      .finally(() => setLoading(false));
-  };
+  const fetchAnjumans = (force = false) => fetchList({
+    key: KEYS.ANJUMANS,
+    url: '/anjumans',
+    force,
+    setData: setAnjumans,
+    setLoading,
+    setError: setFetchError,
+    errorFallback: 'Anjumans load nahi hue. 2 minute wait karein.',
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,7 +43,7 @@ export default function Anjumans() {
       if (imageFile) fd.append('image', imageFile);
       if (editId) await client.post(`/anjumans/${editId}`, fd);
       else await client.post('/anjumans', fd);
-      resetForm(); fetchAnjumans();
+      resetForm(); fetchAnjumans(true);
     } catch (err) {
       setSaveError(formatApiError(err, 'Anjuman save nahi hua.'));
     } finally { setSaving(false); }
@@ -70,7 +72,7 @@ export default function Anjumans() {
     return (
       <AnjumanTracks
         anjuman={selectedAnjuman}
-        onBack={() => { setSelectedAnjuman(null); fetchAnjumans(); }}
+        onBack={() => { setSelectedAnjuman(null); fetchAnjumans(true); }}
         onAnjumanUpdated={(updated) => {
           setSelectedAnjuman(updated);
           setAnjumans(prev => prev.map(a => (a.id === updated.id ? updated : a)));
@@ -106,7 +108,7 @@ export default function Anjumans() {
           </button>
         </div>
       </div>
-      <ErrorBanner error={fetchError} onRetry={fetchAnjumans} />
+      <ErrorBanner error={fetchError} onRetry={() => fetchAnjumans(true)} />
 
       {showForm && (
         <div className="form-card" style={{ marginBottom: 24 }}>
