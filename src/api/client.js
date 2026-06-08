@@ -8,21 +8,12 @@ export const API_BASE_URL = baseURL;
 const client = axios.create({
   baseURL,
   headers: { Accept: 'application/json' },
-  timeout: 120000,
+  timeout: 30000,
 });
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-let lastRequestAt = 0;
-const MIN_REQUEST_GAP_MS = 800;
-
-client.interceptors.request.use(async config => {
-  const elapsed = Date.now() - lastRequestAt;
-  if (elapsed < MIN_REQUEST_GAP_MS) {
-    await sleep(MIN_REQUEST_GAP_MS - elapsed);
-  }
-  lastRequestAt = Date.now();
-
+client.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   if (config.data instanceof FormData) {
@@ -34,26 +25,33 @@ client.interceptors.request.use(async config => {
 client.interceptors.response.use(
   res => res,
   async err => {
-    const config = err.config;
+    const config = err.config || {};
     const status = err.response?.status;
+    const method = (config.method || 'get').toLowerCase();
 
-    if (status === 429 && config) {
-      const attempt = config.__retry429Count || 0;
-      const waits = [10, 20, 35, 50, 65];
-      if (attempt < waits.length) {
-        config.__retry429Count = attempt + 1;
-        const retryAfter = parseInt(err.response?.headers?.['retry-after'] || '0', 10);
-        const waitSec = retryAfter > 0 ? retryAfter : waits[attempt];
-        await sleep(Math.min(Math.max(waitSec, 8), 90) * 1000);
-        return client(config);
+    if (
+      status === 429 &&
+      method === 'get' &&
+      !config.skipRetry &&
+      (config.__retry429Count || 0) < 1
+    ) {
+      config.__retry429Count = 1;
+      await sleep(3000);
+      return client(config);
+    }
+
+    if (
+      status === 401 &&
+      !config.url?.includes('/login') &&
+      !window.location.pathname.includes('login')
+    ) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
       }
     }
 
-    if (status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/';
-    }
     return Promise.reject(err);
   }
 );

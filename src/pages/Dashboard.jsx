@@ -31,30 +31,53 @@ const QUICK = [
   { to: '/users',    icon: UsersIcon,      label: 'Users Dekhein',       color: '#06B6D4' },
 ];
 
+const SUMMARY_CACHE_KEY = 'kc_admin_summary_v1';
+
 export default function Dashboard() {
   const [stats, setStats] = useState({ tracks: 0, reciters: 0, anjumans: 0, users: 0 });
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState('');
   const navigate = useNavigate();
 
-  const fetchStats = () => {
+  const readSummaryCache = () => {
+    try {
+      const raw = localStorage.getItem(SUMMARY_CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const fetchStats = async () => {
+    const cached = readSummaryCache();
+    if (cached) setStats(cached);
+
     setLoading(true);
     setApiError('');
-    client.get('/admin/summary')
-      .then(r => setStats(r.data))
-      .catch(err => {
+
+    try {
+      const r = await client.get('/admin/summary');
+      setStats(r.data);
+      localStorage.setItem(SUMMARY_CACHE_KEY, JSON.stringify(r.data));
+      setApiError('');
+    } catch (err) {
+      if (cached) {
+        setApiError('Live stats load nahi hue — purane numbers dikha rahe hain. Dobara Try karein.');
+      } else {
         const status = err?.response?.status;
         setApiError(
           status === 500
-            ? 'Server error (500) — backend mein koi issue hai. Laravel logs check karein. Migration run hua? (php artisan migrate)'
+            ? 'Server error (500) — backend mein koi issue hai. Laravel logs check karein.'
             : status === 429
-            ? 'Bahut zyada requests (429). 30 second wait karein aur Dobara Try karein.'
-            : status === 403
-            ? 'Admin token expire ho gaya — dobara login karein.'
-            : `API error (${status ?? 'network'}) — backend reachable hai? URL: ${import.meta.env.VITE_API_URL}`
+            ? 'Server busy (429). 1 minute wait karein, phir Dobara Try karein.'
+            : status === 403 || status === 401
+            ? 'Session expire ho gaya — dobara login karein.'
+            : `API error (${status ?? 'network'}) — URL: ${import.meta.env.VITE_API_URL}`
         );
-      })
-      .finally(() => setLoading(false));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchStats(); }, []);

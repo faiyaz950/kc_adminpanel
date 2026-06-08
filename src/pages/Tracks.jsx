@@ -127,10 +127,11 @@ export default function Tracks() {
       const recitersRes = await client.get('/reciters');
       applyTracksPayload(tracksRes.data, recitersRes.data);
       writeTracksCache(tracksRes.data, recitersRes.data);
+      setFetchError('');
     } catch (err) {
-      if (staleCache && err?.response?.status === 429) {
+      if (staleCache) {
         applyTracksPayload(staleCache.tracks, staleCache.reciters);
-        setFetchError('Server busy — cached data dikha rahe hain. 2 minute baad refresh karein.');
+        setFetchError('Live data load nahi hua — saved data dikha rahe hain. Dobara Try karein.');
       } else {
         setFetchError(formatApiError(err, 'Tracks load nahi hue. Backend ya network check karein.'));
       }
