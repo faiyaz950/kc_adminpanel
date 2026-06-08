@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Tracks from './pages/Tracks';
 import Reciters from './pages/Reciters';
 import Anjumans from './pages/Anjumans';
+import AshraMajlis from './pages/AshraMajlis';
 import Users from './pages/Users';
 import Messages from './pages/Messages';
 import Popups from './pages/Popups';
@@ -124,6 +125,7 @@ export default function App() {
             <Route path="/tracks" element={<Tracks />} />
             <Route path="/reciters" element={<Reciters />} />
             <Route path="/anjumans" element={<Anjumans />} />
+            <Route path="/ashra-majlis" element={<AshraMajlis />} />
             <Route path="/users" element={<Users />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/popups" element={<Popups />} />
