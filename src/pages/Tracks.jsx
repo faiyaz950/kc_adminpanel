@@ -56,6 +56,9 @@ const TRACK_YEARS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURREN
 
 const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: defaultLanguage('dua'), occasion: '', year: '', is_featured: false, lyrics: '' };
 
+const TRACKS_CACHE_KEY = 'kc_admin_tracks_v1';
+const TRACKS_CACHE_TTL_MS = 2 * 60 * 1000;
+
 export default function Tracks() {
   const [tracks, setTracks] = useState([]);
   const [reciters, setReciters] = useState([]);
@@ -74,20 +77,49 @@ export default function Tracks() {
   const [search, setSearch] = useState('');
   const [filterReciter, setFilterReciter] = useState(null);
 
-  useEffect(() => {
-    setFilterReciter(null);
-    fetchTracks();
-  }, [filterCat]);
+  useEffect(() => { fetchTracks(); }, []);
   useEffect(() => {
     client.get('/reciters').then(r => setReciters(r.data)).catch(() => {});
   }, []);
 
-  const fetchTracks = () => {
+  const readTracksCache = () => {
+    try {
+      const raw = sessionStorage.getItem(TRACKS_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.data || Date.now() - parsed.ts > TRACKS_CACHE_TTL_MS) return null;
+      return parsed.data;
+    } catch {
+      return null;
+    }
+  };
+
+  const writeTracksCache = (data) => {
+    try {
+      sessionStorage.setItem(TRACKS_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+    } catch {
+      // ignore quota errors
+    }
+  };
+
+  const fetchTracks = (force = false) => {
+    if (!force) {
+      const cached = readTracksCache();
+      if (cached) {
+        setTracks(cached);
+        setLoading(false);
+        setFetchError('');
+        return;
+      }
+    }
+
     setLoading(true);
     setFetchError('');
-    const params = filterCat ? { category: filterCat } : {};
-    client.get('/tracks', { params })
-      .then(r => { setTracks(r.data); })
+    client.get('/tracks')
+      .then(r => {
+        setTracks(r.data);
+        writeTracksCache(r.data);
+      })
       .catch(err => setFetchError(formatApiError(err, 'Tracks load nahi hue. Backend ya network check karein.')))
       .finally(() => setLoading(false));
   };
@@ -113,7 +145,7 @@ export default function Tracks() {
       if (imageFile) fd.append('image', imageFile);
       if (editId) await client.post(`/tracks/${editId}`, fd);
       else await client.post('/tracks', fd);
-      resetForm(); fetchTracks();
+      resetForm(); fetchTracks(true);
     } catch (err) {
       console.error('[tracks save]', err.response?.status, err.response?.data || err.message);
       setSaveError(formatApiError(err, 'Track save nahi hua.'));
@@ -135,7 +167,7 @@ export default function Tracks() {
     if (!confirm('Yeh track delete karna chahte ho?')) return;
     try {
       await client.delete(`/tracks/${id}`);
-      fetchTracks();
+      fetchTracks(true);
     } catch (err) {
       alert(formatApiError(err, 'Track delete nahi hua.'));
     }
@@ -179,6 +211,7 @@ export default function Tracks() {
 
   const q = search.toLowerCase();
   const filtered = tracks.filter(t => {
+    if (filterCat && t.category !== filterCat) return false;
     if (filterReciter && !matchesReciter(t, filterReciter)) return false;
     if (!q) return true;
     return (
@@ -214,7 +247,7 @@ export default function Tracks() {
           </button>
         </div>
       </div>
-      <ErrorBanner error={fetchError} onRetry={fetchTracks} />
+      <ErrorBanner error={fetchError} onRetry={() => fetchTracks(true)} />
 
       {/* Reciters with tracks — round filter cards */}
       {!loading && recitersWithTracks.length > 0 && (
@@ -443,7 +476,7 @@ export default function Tracks() {
           const meta = CAT_COLORS[c];
           const active = filterCat === c;
           return (
-            <button key={c} onClick={() => setFilterCat(c)}
+            <button key={c} onClick={() => { setFilterCat(c); setFilterReciter(null); }}
               style={{
                 padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600,
                 background: active ? (meta ? meta.bg : 'rgba(212,168,67,.15)') : 'var(--bg-card)',

@@ -28,13 +28,15 @@ client.interceptors.response.use(
     const config = err.config;
     const status = err.response?.status;
 
-    if (status === 429 && config && !config.__is429Retry) {
+    if (status === 429 && config) {
       const attempt = config.__retry429Count || 0;
-      if (attempt < 2) {
-        config.__is429Retry = true;
+      if (attempt < 4) {
         config.__retry429Count = attempt + 1;
-        const retryAfter = parseInt(err.response?.headers?.['retry-after'] || '4', 10);
-        await sleep(Math.min(Math.max(retryAfter, 2), 10) * 1000);
+        const retryAfter = parseInt(
+          err.response?.headers?.['retry-after'] || String(5 + attempt * 4),
+          10,
+        );
+        await sleep(Math.min(Math.max(retryAfter, 4), 20) * 1000);
         return client(config);
       }
     }
