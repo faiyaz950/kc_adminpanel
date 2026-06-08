@@ -78,9 +78,6 @@ export default function Tracks() {
   const [filterReciter, setFilterReciter] = useState(null);
 
   useEffect(() => { fetchTracks(); }, []);
-  useEffect(() => {
-    client.get('/reciters').then(r => setReciters(r.data)).catch(() => {});
-  }, []);
 
   const readTracksCache = () => {
     try {
@@ -115,10 +112,24 @@ export default function Tracks() {
 
     setLoading(true);
     setFetchError('');
-    client.get('/tracks')
+    const load = client.get('/admin/tracks-page').catch(err => {
+      if (err?.response?.status === 404) {
+        return Promise.all([
+          client.get('/tracks'),
+          client.get('/reciters'),
+        ]).then(([tracksRes, recitersRes]) => ({
+          data: { tracks: tracksRes.data, reciters: recitersRes.data },
+        }));
+      }
+      throw err;
+    });
+
+    load
       .then(r => {
-        setTracks(r.data);
-        writeTracksCache(r.data);
+        const data = r.data?.tracks ?? [];
+        setTracks(data);
+        setReciters(r.data?.reciters ?? []);
+        writeTracksCache(data);
       })
       .catch(err => setFetchError(formatApiError(err, 'Tracks load nahi hue. Backend ya network check karein.')))
       .finally(() => setLoading(false));

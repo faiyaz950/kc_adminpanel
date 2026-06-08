@@ -13,7 +13,16 @@ const client = axios.create({
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-client.interceptors.request.use(config => {
+let lastRequestAt = 0;
+const MIN_REQUEST_GAP_MS = 500;
+
+client.interceptors.request.use(async config => {
+  const elapsed = Date.now() - lastRequestAt;
+  if (elapsed < MIN_REQUEST_GAP_MS) {
+    await sleep(MIN_REQUEST_GAP_MS - elapsed);
+  }
+  lastRequestAt = Date.now();
+
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   if (config.data instanceof FormData) {
