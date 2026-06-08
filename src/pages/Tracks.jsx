@@ -36,6 +36,13 @@ const CAT_COLORS = {
   tarana:   { color: '#EC4899', bg: 'rgba(236,72,153,.12)',  border: 'rgba(236,72,153,.3)'  },
 };
 
+const formatPlayCount = (n) => {
+  const count = Number(n) || 0;
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return String(count);
+};
+
 const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: 'Urdu', occasion: '', is_featured: false, lyrics: '' };
 
 export default function Tracks() {
@@ -158,13 +165,18 @@ export default function Tracks() {
     );
   });
 
+  const filteredPlays = useMemo(
+    () => filtered.reduce((sum, t) => sum + (Number(t.play_count) || 0), 0),
+    [filtered],
+  );
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
         <div>
           <h2 className="page-title">Tracks</h2>
           <p className="page-subtitle">
-            {tracks.length} total · {filtered.length} shown
+            {tracks.length} total · {filtered.length} shown · {formatPlayCount(filteredPlays)} plays
             {filterReciter ? ` · ${filterReciter.name}` : ''}
           </p>
         </div>
@@ -327,6 +339,20 @@ export default function Tracks() {
                   <option value="yes">⭐ Yes — Featured</option>
                 </select>
               </FormField>
+              {editId && (
+                <FormField label="Total Plays">
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px', borderRadius: 10,
+                    background: 'var(--bg-surface)', border: '1px solid var(--divider)',
+                  }}>
+                    <PlayCountBadge count={form.play_count} />
+                    <span style={{ color: 'var(--grey)', fontSize: 12 }}>
+                      App se kitni baar play hua
+                    </span>
+                  </div>
+                </FormField>
+              )}
               <FormField label="MP3 / Audio File" fullWidth>
                 <p style={{ color: 'var(--grey)', fontSize: 11, marginBottom: 8 }}>
                   Duration MP3 se automatically detect hogi — manually set karne ki zaroorat nahi.
@@ -389,7 +415,7 @@ export default function Tracks() {
       {/* Track list */}
       {loading ? (
         <>
-          <div className="tracks-desktop"><TableSkeleton cols={8} /></div>
+          <div className="tracks-desktop"><TableSkeleton cols={9} /></div>
           <div className="tracks-mobile"><CardSkeleton /></div>
         </>
       ) : filtered.length === 0 ? (
@@ -407,7 +433,7 @@ export default function Tracks() {
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Cover', 'Title', 'Category', 'Reciter', 'Language', 'Featured', 'Preview', 'Actions'].map(h => (
+                  {['Cover', 'Title', 'Category', 'Reciter', 'Language', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -466,6 +492,33 @@ function TrackCover({ track, cm, size = 36 }) {
   );
 }
 
+function PlayCountBadge({ count }) {
+  const n = Number(count) || 0;
+  return (
+    <span
+      title={`${n} plays`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        background: 'rgba(22,163,74,.1)',
+        color: 'var(--emerald-light)',
+        border: '1px solid rgba(22,163,74,.25)',
+        padding: '3px 10px',
+        borderRadius: 20,
+        fontSize: 11,
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M8 5v14l11-7z" />
+      </svg>
+      {formatPlayCount(n)}
+    </span>
+  );
+}
+
 function CategoryBadge({ category, cm }) {
   return (
     <span style={{ background: cm.bg, color: cm.color, border: `1px solid ${cm.border}`, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
@@ -484,6 +537,7 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
         <td><CategoryBadge category={track.category} cm={cm} /></td>
         <td style={{ color: 'var(--grey-light)', fontSize: 13 }}>{track.reciter_name || '—'}</td>
         <td style={{ fontSize: 13 }}>{track.language || '—'}</td>
+        <td><PlayCountBadge count={track.play_count} /></td>
         <td>
           {track.is_featured
             ? <span style={{ background: 'rgba(212,168,67,.12)', color: 'var(--gold)', border: '1px solid rgba(212,168,67,.3)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>⭐ Yes</span>
@@ -505,7 +559,7 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
       </tr>
       {previewTrackId === track.id && (
         <tr>
-          <td colSpan={8} style={{ background: 'var(--bg-surface)', padding: '10px 16px' }}>
+          <td colSpan={9} style={{ background: 'var(--bg-surface)', padding: '10px 16px' }}>
             <audio controls autoPlay src={track.audio_url} style={{ width: '100%', height: 36, accentColor: 'var(--gold)' }} />
           </td>
         </tr>
@@ -527,6 +581,7 @@ function TrackCard({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete 
           <div className="track-card-meta">{track.reciter_name || '—'}</div>
           <div className="track-card-tags">
             <CategoryBadge category={track.category} cm={cm} />
+            <PlayCountBadge count={track.play_count} />
             {track.language && (
               <span style={{ background: 'var(--bg-surface)', color: 'var(--grey)', border: '1px solid var(--divider)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
                 {track.language}
