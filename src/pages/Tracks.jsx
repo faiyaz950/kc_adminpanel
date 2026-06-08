@@ -8,11 +8,11 @@ const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'taran
 const LANGUAGES = {
   dua:      ['Arabic', 'Urdu', 'Hindi', 'Farsi'],
   noha:     ['Urdu', 'Punjabi', 'Hindi', 'Farsi'],
-  manqabat: ['Urdu', 'Punjabi', 'Arabic', 'Hindi'],
-  naat:     ['Urdu', 'Punjabi', 'Arabic', 'Hindi', 'English'],
+  manqabat: ['Urdu', 'Punjabi', 'Arabic', 'Hindi', 'Farsi'],
+  naat:     ['Urdu', 'Punjabi', 'Arabic', 'Hindi', 'English', 'Farsi'],
   ziyarat:  ['Arabic', 'Urdu', 'Farsi'],
-  kids:     ['Urdu', 'Hindi', 'English'],
-  tarana:   ['Urdu', 'Hindi', 'Punjabi'],
+  kids:     ['Urdu', 'Hindi', 'English', 'Farsi'],
+  tarana:   ['Urdu', 'Hindi', 'Punjabi', 'Farsi'],
 };
 const OCCASIONS = {
   dua:      ['Subah', 'Shaam', 'Jumma', 'Muharram', 'Ramzan', 'Hajj', 'Ziarat'],
