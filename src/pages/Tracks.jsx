@@ -56,8 +56,8 @@ const TRACK_YEARS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURREN
 
 const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: defaultLanguage('dua'), occasion: '', year: '', is_featured: false, lyrics: '' };
 
-const TRACKS_CACHE_KEY = 'kc_admin_tracks_v2';
-const TRACKS_CACHE_TTL_MS = 15 * 60 * 1000;
+const TRACKS_CACHE_KEY = 'kc_admin_tracks_v3';
+const TRACKS_CACHE_TTL_MS = 30 * 60 * 1000;
 
 export default function Tracks() {
   const [tracks, setTracks] = useState([]);
@@ -81,7 +81,7 @@ export default function Tracks() {
 
   const readTracksCache = (maxAgeMs = TRACKS_CACHE_TTL_MS) => {
     try {
-      const raw = sessionStorage.getItem(TRACKS_CACHE_KEY);
+      const raw = localStorage.getItem(TRACKS_CACHE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed?.tracks || Date.now() - parsed.ts > maxAgeMs) return null;
@@ -93,7 +93,7 @@ export default function Tracks() {
 
   const writeTracksCache = (tracks, reciters) => {
     try {
-      sessionStorage.setItem(TRACKS_CACHE_KEY, JSON.stringify({
+      localStorage.setItem(TRACKS_CACHE_KEY, JSON.stringify({
         tracks,
         reciters,
         ts: Date.now(),
@@ -108,32 +108,49 @@ export default function Tracks() {
     setReciters(reciters ?? []);
   };
 
-  const fetchTracks = async (force = false) => {
-    const freshCache = !force ? readTracksCache() : null;
-    const staleCache = readTracksCache(Number.POSITIVE_INFINITY);
+  const loadBootstrap = async () => {
+    try {
+      const res = await client.get('/tracks/bootstrap');
+      return res.data;
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        const tracksRes = await client.get('/tracks');
+        const recitersRes = await client.get('/reciters');
+        return { tracks: tracksRes.data, reciters: recitersRes.data };
+      }
+      throw err;
+    }
+  };
 
-    if (freshCache) {
-      applyTracksPayload(freshCache.tracks, freshCache.reciters);
+  const fetchTracks = async (force = false) => {
+    const staleCache = readTracksCache(Number.POSITIVE_INFINITY);
+    const freshCache = !force ? readTracksCache() : null;
+
+    if (staleCache) {
+      applyTracksPayload(staleCache.tracks, staleCache.reciters);
       setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    if (freshCache && !force) {
       setFetchError('');
       return;
     }
 
-    setLoading(true);
     setFetchError('');
 
     try {
-      const tracksRes = await client.get('/tracks');
-      const recitersRes = await client.get('/reciters');
-      applyTracksPayload(tracksRes.data, recitersRes.data);
-      writeTracksCache(tracksRes.data, recitersRes.data);
+      const data = await loadBootstrap();
+      applyTracksPayload(data.tracks, data.reciters);
+      writeTracksCache(data.tracks, data.reciters);
       setFetchError('');
     } catch (err) {
       if (staleCache) {
         applyTracksPayload(staleCache.tracks, staleCache.reciters);
-        setFetchError('Live data load nahi hua — saved data dikha rahe hain. Dobara Try karein.');
+        setFetchError('Server busy — saved data dikha rahe hain. 5 minute baad refresh karein.');
       } else {
-        setFetchError(formatApiError(err, 'Tracks load nahi hue. Backend ya network check karein.'));
+        setFetchError(formatApiError(err, 'Tracks load nahi hue. 2 minute wait karein, phir Dobara Try karein.'));
       }
     } finally {
       setLoading(false);

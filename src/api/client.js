@@ -11,8 +11,6 @@ const client = axios.create({
   timeout: 30000,
 });
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 client.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -24,32 +22,18 @@ client.interceptors.request.use(config => {
 
 client.interceptors.response.use(
   res => res,
-  async err => {
+  err => {
     const config = err.config || {};
     const status = err.response?.status;
-    const method = (config.method || 'get').toLowerCase();
-
-    if (
-      status === 429 &&
-      method === 'get' &&
-      !config.skipRetry &&
-      (config.__retry429Count || 0) < 1
-    ) {
-      config.__retry429Count = 1;
-      await sleep(3000);
-      return client(config);
-    }
 
     if (
       status === 401 &&
       !config.url?.includes('/login') &&
-      !window.location.pathname.includes('login')
+      window.location.pathname !== '/'
     ) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (window.location.pathname !== '/') {
-        window.location.href = '/';
-      }
+      window.location.href = '/';
     }
 
     return Promise.reject(err);
