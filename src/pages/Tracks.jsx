@@ -43,10 +43,18 @@ const formatPlayCount = (n) => {
   return String(count);
 };
 
+const defaultLanguage = (category) => (LANGUAGES[category] || ['Urdu'])[0];
+
+const resolveLanguage = (category, language) => {
+  const options = LANGUAGES[category] || [];
+  if (language && options.includes(language)) return language;
+  return defaultLanguage(category);
+};
+
 const CURRENT_YEAR = new Date().getFullYear();
 const TRACK_YEARS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURRENT_YEAR - i);
 
-const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: 'Urdu', occasion: '', year: '', is_featured: false, lyrics: '' };
+const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: defaultLanguage('dua'), occasion: '', year: '', is_featured: false, lyrics: '' };
 
 export default function Tracks() {
   const [tracks, setTracks] = useState([]);
@@ -90,10 +98,16 @@ export default function Tracks() {
       setSaveError('Naya track ke liye MP3 / audio file zaroori hai.');
       return;
     }
+    const language = resolveLanguage(form.category, form.language);
+    if (!language) {
+      setSaveError('Language select karein.');
+      return;
+    }
     setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
-      ['title', 'category', 'reciter_id', 'reciter_name', 'language', 'occasion', 'year', 'lyrics'].forEach(k => fd.append(k, form[k] || ''));
+      const payload = { ...form, language };
+      ['title', 'category', 'reciter_id', 'reciter_name', 'language', 'occasion', 'year', 'lyrics'].forEach(k => fd.append(k, payload[k] ?? ''));
       fd.append('is_featured', form.is_featured ? '1' : '0');
       if (audioFile) fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
@@ -107,7 +121,11 @@ export default function Tracks() {
   };
 
   const handleEdit = (track) => {
-    setForm({ ...track, year: track.year ? String(track.year) : '' });
+    setForm({
+      ...track,
+      year: track.year ? String(track.year) : '',
+      language: resolveLanguage(track.category, track.language),
+    });
     setEditId(track.id); setShowForm(true);
     setAudioFile(null); setImageFile(null); setAudioPreviewUrl(null); setSaveError('');
     window.scrollTo(0, 0);
@@ -313,7 +331,19 @@ export default function Tracks() {
                 <input className="form-input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required />
               </FormField>
               <FormField label="Category">
-                <select className="form-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value, language: '', occasion: '' }))}>
+                <select
+                  className="form-input"
+                  value={form.category}
+                  onChange={e => {
+                    const category = e.target.value;
+                    setForm(f => ({
+                      ...f,
+                      category,
+                      language: resolveLanguage(category, f.language),
+                      occasion: '',
+                    }));
+                  }}
+                >
                   {CATEGORIES.map(c => <option key={c} value={c}>{catLabel(c)}</option>)}
                 </select>
               </FormField>
@@ -326,8 +356,13 @@ export default function Tracks() {
               <FormField label="Reciter Naam (manual)">
                 <input className="form-input" value={form.reciter_name || ''} onChange={e => setForm(f => ({ ...f, reciter_name: e.target.value }))} />
               </FormField>
-              <FormField label="Language">
-                <select className="form-input" value={form.language} onChange={e => setForm(f => ({ ...f, language: e.target.value }))}>
+              <FormField label="Language *">
+                <select
+                  className="form-input"
+                  value={resolveLanguage(form.category, form.language)}
+                  onChange={e => setForm(f => ({ ...f, language: e.target.value }))}
+                  required
+                >
                   {(LANGUAGES[form.category] || []).map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </FormField>
