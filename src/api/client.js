@@ -14,7 +14,7 @@ const client = axios.create({
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 let lastRequestAt = 0;
-const MIN_REQUEST_GAP_MS = 500;
+const MIN_REQUEST_GAP_MS = 800;
 
 client.interceptors.request.use(async config => {
   const elapsed = Date.now() - lastRequestAt;
@@ -39,13 +39,12 @@ client.interceptors.response.use(
 
     if (status === 429 && config) {
       const attempt = config.__retry429Count || 0;
-      if (attempt < 4) {
+      const waits = [10, 20, 35, 50, 65];
+      if (attempt < waits.length) {
         config.__retry429Count = attempt + 1;
-        const retryAfter = parseInt(
-          err.response?.headers?.['retry-after'] || String(5 + attempt * 4),
-          10,
-        );
-        await sleep(Math.min(Math.max(retryAfter, 4), 20) * 1000);
+        const retryAfter = parseInt(err.response?.headers?.['retry-after'] || '0', 10);
+        const waitSec = retryAfter > 0 ? retryAfter : waits[attempt];
+        await sleep(Math.min(Math.max(waitSec, 8), 90) * 1000);
         return client(config);
       }
     }

@@ -56,8 +56,8 @@ const TRACK_YEARS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURREN
 
 const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: defaultLanguage('dua'), occasion: '', year: '', is_featured: false, lyrics: '' };
 
-const TRACKS_CACHE_KEY = 'kc_admin_tracks_v1';
-const TRACKS_CACHE_TTL_MS = 2 * 60 * 1000;
+const TRACKS_CACHE_KEY = 'kc_admin_tracks_v2';
+const TRACKS_CACHE_TTL_MS = 15 * 60 * 1000;
 
 export default function Tracks() {
   const [tracks, setTracks] = useState([]);
@@ -79,60 +79,64 @@ export default function Tracks() {
 
   useEffect(() => { fetchTracks(); }, []);
 
-  const readTracksCache = () => {
+  const readTracksCache = (maxAgeMs = TRACKS_CACHE_TTL_MS) => {
     try {
       const raw = sessionStorage.getItem(TRACKS_CACHE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (!parsed?.data || Date.now() - parsed.ts > TRACKS_CACHE_TTL_MS) return null;
-      return parsed.data;
+      if (!parsed?.tracks || Date.now() - parsed.ts > maxAgeMs) return null;
+      return parsed;
     } catch {
       return null;
     }
   };
 
-  const writeTracksCache = (data) => {
+  const writeTracksCache = (tracks, reciters) => {
     try {
-      sessionStorage.setItem(TRACKS_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+      sessionStorage.setItem(TRACKS_CACHE_KEY, JSON.stringify({
+        tracks,
+        reciters,
+        ts: Date.now(),
+      }));
     } catch {
       // ignore quota errors
     }
   };
 
-  const fetchTracks = (force = false) => {
-    if (!force) {
-      const cached = readTracksCache();
-      if (cached) {
-        setTracks(cached);
-        setLoading(false);
-        setFetchError('');
-        return;
-      }
+  const applyTracksPayload = (tracks, reciters) => {
+    setTracks(tracks ?? []);
+    setReciters(reciters ?? []);
+  };
+
+  const fetchTracks = async (force = false) => {
+    const freshCache = !force ? readTracksCache() : null;
+    const staleCache = readTracksCache(Number.POSITIVE_INFINITY);
+
+    if (freshCache) {
+      applyTracksPayload(freshCache.tracks, freshCache.reciters);
+      setLoading(false);
+      setFetchError('');
+      return;
     }
 
     setLoading(true);
     setFetchError('');
-    const load = client.get('/admin/tracks-page').catch(err => {
-      if (err?.response?.status === 404) {
-        return Promise.all([
-          client.get('/tracks'),
-          client.get('/reciters'),
-        ]).then(([tracksRes, recitersRes]) => ({
-          data: { tracks: tracksRes.data, reciters: recitersRes.data },
-        }));
-      }
-      throw err;
-    });
 
-    load
-      .then(r => {
-        const data = r.data?.tracks ?? [];
-        setTracks(data);
-        setReciters(r.data?.reciters ?? []);
-        writeTracksCache(data);
-      })
-      .catch(err => setFetchError(formatApiError(err, 'Tracks load nahi hue. Backend ya network check karein.')))
-      .finally(() => setLoading(false));
+    try {
+      const tracksRes = await client.get('/tracks');
+      const recitersRes = await client.get('/reciters');
+      applyTracksPayload(tracksRes.data, recitersRes.data);
+      writeTracksCache(tracksRes.data, recitersRes.data);
+    } catch (err) {
+      if (staleCache && err?.response?.status === 429) {
+        applyTracksPayload(staleCache.tracks, staleCache.reciters);
+        setFetchError('Server busy — cached data dikha rahe hain. 2 minute baad refresh karein.');
+      } else {
+        setFetchError(formatApiError(err, 'Tracks load nahi hue. Backend ya network check karein.'));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
