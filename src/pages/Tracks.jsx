@@ -1,7 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
-import { ensureArray } from '../api/listCache';
+import {
+  readBootstrapCache,
+  readStaleBootstrapCache,
+  writeBootstrap,
+  sanitizeList,
+} from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -25,7 +30,10 @@ const OCCASIONS = {
   tarana:   ['Muharram', 'Wiladat', 'Independence Day', 'General'],
 };
 const CAT_LABELS = { naat: 'Masaib' };
-const catLabel = c => CAT_LABELS[c] || (c.charAt(0).toUpperCase() + c.slice(1));
+const catLabel = c => {
+  if (!c) return '—';
+  return CAT_LABELS[c] || (c.charAt(0).toUpperCase() + c.slice(1));
+};
 
 const CAT_COLORS = {
   dua:      { color: '#06B6D4', bg: 'rgba(6,182,212,.12)',   border: 'rgba(6,182,212,.3)'   },
@@ -57,9 +65,6 @@ const TRACK_YEARS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURREN
 
 const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: defaultLanguage('dua'), occasion: '', year: '', is_featured: false, lyrics: '' };
 
-const TRACKS_CACHE_KEY = 'kc_admin_tracks_v3';
-const TRACKS_CACHE_TTL_MS = 30 * 60 * 1000;
-
 export default function Tracks() {
   const [tracks, setTracks] = useState([]);
   const [reciters, setReciters] = useState([]);
@@ -80,33 +85,9 @@ export default function Tracks() {
 
   useEffect(() => { fetchTracks(); }, []);
 
-  const readTracksCache = (maxAgeMs = TRACKS_CACHE_TTL_MS) => {
-    try {
-      const raw = localStorage.getItem(TRACKS_CACHE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed?.tracks) || Date.now() - parsed.ts > maxAgeMs) return null;
-      return parsed;
-    } catch {
-      return null;
-    }
-  };
-
-  const writeTracksCache = (tracks, reciters) => {
-    try {
-      localStorage.setItem(TRACKS_CACHE_KEY, JSON.stringify({
-        tracks,
-        reciters,
-        ts: Date.now(),
-      }));
-    } catch {
-      // ignore quota errors
-    }
-  };
-
   const applyTracksPayload = (tracks, reciters) => {
-    setTracks(ensureArray(tracks));
-    setReciters(ensureArray(reciters));
+    setTracks(sanitizeList(tracks));
+    setReciters(sanitizeList(reciters));
   };
 
   const loadBootstrap = async () => {
@@ -124,8 +105,8 @@ export default function Tracks() {
   };
 
   const fetchTracks = async (force = false) => {
-    const staleCache = readTracksCache(Number.POSITIVE_INFINITY);
-    const freshCache = !force ? readTracksCache() : null;
+    const staleCache = readStaleBootstrapCache();
+    const freshCache = !force ? readBootstrapCache() : null;
 
     if (staleCache) {
       applyTracksPayload(staleCache.tracks, staleCache.reciters);
@@ -144,7 +125,7 @@ export default function Tracks() {
     try {
       const data = await loadBootstrap();
       applyTracksPayload(data.tracks, data.reciters);
-      writeTracksCache(data.tracks, data.reciters);
+      writeBootstrap(data.tracks, data.reciters);
       setFetchError('');
     } catch (err) {
       if (staleCache) {

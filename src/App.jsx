@@ -11,7 +11,9 @@ import Users from './pages/Users';
 import Messages from './pages/Messages';
 import Popups from './pages/Popups';
 import Sidebar from './components/Sidebar';
+import ErrorBoundary from './components/ErrorBoundary';
 import { prefetchTracksBootstrap } from './api/prefetch';
+import { purgeBadCache } from './api/listCache';
 
 function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -83,6 +85,7 @@ export default function App() {
   const [user, setUser] = useState(undefined);
 
   useEffect(() => {
+    purgeBadCache();
     const stored = localStorage.getItem('user');
     const token = localStorage.getItem('token');
     if (stored && token) {
@@ -128,18 +131,20 @@ export default function App() {
         <Login onLogin={handleLogin} />
       ) : (
         <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/tracks" element={<Tracks />} />
-            <Route path="/reciters" element={<Reciters />} />
-            <Route path="/anjumans" element={<Anjumans />} />
-            <Route path="/ashra-majlis" element={<AshraMajlis />} />
-            <Route path="/taqreer" element={<Taqreer />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/popups" element={<Popups />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/tracks" element={<Tracks />} />
+              <Route path="/reciters" element={<Reciters />} />
+              <Route path="/anjumans" element={<Anjumans />} />
+              <Route path="/ashra-majlis" element={<AshraMajlis />} />
+              <Route path="/taqreer" element={<Taqreer />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/popups" element={<Popups />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
         </Layout>
       )}
     </BrowserRouter>

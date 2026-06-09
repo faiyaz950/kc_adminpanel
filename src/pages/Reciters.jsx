@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
-import { readCache, readStaleCache, writeCache, KEYS, readBootstrapReciters, ensureArray } from '../api/listCache';
+import { readCache, readStaleCache, writeCache, KEYS, readBootstrapReciters, sanitizeList } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -12,7 +12,10 @@ const COUNTRIES = [
   'Canada', 'Kuwait', 'Bahrain', 'Saudi Arabia', 'Australia', 'Other',
 ];
 const CAT_LABELS = { naat: 'Masaib' };
-const catLabel = c => CAT_LABELS[c] || (c.charAt(0).toUpperCase() + c.slice(1));
+const catLabel = c => {
+  if (!c) return '—';
+  return CAT_LABELS[c] || (c.charAt(0).toUpperCase() + c.slice(1));
+};
 
 const CAT_COLORS = {
   dua:      { color: '#06B6D4', bg: 'rgba(6,182,212,.12)',   border: 'rgba(6,182,212,.3)'   },
@@ -41,7 +44,7 @@ export default function Reciters() {
 
   const fetchReciters = async (force = false) => {
     const fresh = !force ? readCache(KEYS.RECITERS) : null;
-    const stale = ensureArray(readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters());
+    const stale = sanitizeList(readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters());
 
     if (stale.length) {
       setReciters(stale);
@@ -58,12 +61,12 @@ export default function Reciters() {
 
     try {
       const res = await client.get('/reciters');
-      const list = ensureArray(res.data);
+      const list = sanitizeList(res.data);
       setReciters(list);
       writeCache(KEYS.RECITERS, list);
       setFetchError('');
     } catch (err) {
-      const fallback = ensureArray(readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters());
+      const fallback = sanitizeList(readStaleCache(KEYS.RECITERS) ?? readBootstrapReciters());
       if (fallback.length) {
         setReciters(fallback);
         setFetchError('Server busy — saved reciters dikha rahe hain. 5 minute baad refresh karein.');
@@ -99,7 +102,12 @@ export default function Reciters() {
   };
 
   const handleEdit = (r) => {
-    setForm({ ...r, country: r.country || '', categories: r.categories || [], languages: r.languages || [] });
+    setForm({
+      ...r,
+      country: r.country || '',
+      categories: Array.isArray(r.categories) ? r.categories : [],
+      languages: Array.isArray(r.languages) ? r.languages : [],
+    });
     setEditId(r.id); setShowForm(true); setImageFile(null); setSaveError('');
     window.scrollTo(0, 0);
   };
@@ -318,7 +326,7 @@ function ReciterCard({ r, onEdit, onDelete }) {
         {r.bio && <p style={{ color: 'var(--grey)', fontSize: 12, lineHeight: 1.6, marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.bio}</p>}
 
         {/* Category tags */}
-        {r.categories?.length > 0 && (
+        {Array.isArray(r.categories) && r.categories.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
             {r.categories.map(c => {
               const cm = CAT_COLORS[c] || {};
@@ -328,7 +336,7 @@ function ReciterCard({ r, onEdit, onDelete }) {
         )}
 
         {/* Language tags */}
-        {r.languages?.length > 0 && (
+        {Array.isArray(r.languages) && r.languages.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 14 }}>
             {r.languages.map(l => (
               <span key={l} style={{ background: 'var(--bg-surface)', color: 'var(--grey)', border: '1px solid var(--divider)', padding: '2px 8px', borderRadius: 4, fontSize: 10 }}>{l}</span>
