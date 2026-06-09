@@ -6,7 +6,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
 const TRACK_TYPES = [
-  { value: 'ashra_majlis', label: 'Ashra Majlis' },
+  { value: 'ashra_majlis', label: 'Majalis' },
   { value: 'dars', label: 'Dars' },
   { value: 'podcast', label: 'Podcast' },
   { value: 'lecture', label: 'Lecture' },

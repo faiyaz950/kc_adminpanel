@@ -16,6 +16,8 @@ client.interceptors.request.use(config => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type'];
+    // Large majlis audio (50MB+) needs more than the default 30s.
+    config.timeout = 600000;
   }
   return config;
 });

@@ -2,6 +2,16 @@
 export function formatApiError(err, fallback = 'Request failed.') {
   const status = err?.response?.status;
 
+  if (err?.code === 'ECONNABORTED' || /timeout/i.test(err?.message || '')) {
+    return 'Upload timeout ho gaya. Badi audio file hai — 2-3 minute wait karein, phir dubara try karein.';
+  }
+  if (!err?.response) {
+    return 'Server se connection nahi bana. Internet check karein ya thori der baad dubara try karein.';
+  }
+
+  if (status === 413) {
+    return 'File bahut bari hai. Audio ~100MB se chhoti rakhein ya compress karein.';
+  }
   if (status === 429) {
     return 'Server busy hai (429). 1 minute wait karein, sirf ek tab rakhein, phir Dobara Try karein.';
   }
