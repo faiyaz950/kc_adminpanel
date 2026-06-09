@@ -220,12 +220,22 @@ function MaulanaTracks({ maulana, onBack, onMaulanaUpdated }) {
 
   useEffect(() => { fetchTracks(); }, [maulanaInfo.id]);
 
-  const fetchTracks = () => {
+  const fetchTracks = async () => {
     setLoading(true);
-    client.get(`/maulanas/${maulanaInfo.id}/tracks`)
-      .then(r => setTracks(r.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    try {
+      const { data } = await client.get(`/maulanas/${maulanaInfo.id}/tracks`);
+      setTracks(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const trackMatchesUpload = (track, uploadTitle, uploadDay) => {
+    if (!track || track.title !== uploadTitle) return false;
+    if (!uploadDay) return true;
+    return String(track.day_number ?? '') === String(uploadDay);
   };
 
   const resetMaulanaForm = () => {
@@ -275,6 +285,8 @@ function MaulanaTracks({ maulana, onBack, onMaulanaUpdated }) {
     e.preventDefault();
     if (!editId && !audioFile) { setSaveError('Audio file required'); return; }
     setSaving(true); setSaveError('');
+    const uploadTitle = title;
+    const uploadDay = dayNumber;
     try {
       const fd = new FormData();
       fd.append('title', title);
@@ -284,8 +296,19 @@ function MaulanaTracks({ maulana, onBack, onMaulanaUpdated }) {
       if (editId) await client.post(`/maulana-tracks/${editId}`, fd);
       else await client.post(`/maulanas/${maulanaInfo.id}/tracks`, fd);
       resetTrackForm();
-      fetchTracks();
+      await fetchTracks();
     } catch (err) {
+      try {
+        const { data: latest } = await client.get(`/maulanas/${maulanaInfo.id}/tracks`);
+        const rows = Array.isArray(latest) ? latest : [];
+        setTracks(rows);
+        if (!editId && rows.some(t => trackMatchesUpload(t, uploadTitle, uploadDay))) {
+          resetTrackForm();
+          return;
+        }
+      } catch {
+        // Keep the original upload error below.
+      }
       setSaveError(formatApiError(err, 'Audio save nahi hua.'));
     } finally { setSaving(false); }
   };
