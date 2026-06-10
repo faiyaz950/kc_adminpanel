@@ -1,35 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-
-let _ffmpeg = null;
-let _ffmpegReady = false;
-let _loadPromise = null;
-
-async function loadFFmpeg(onProgress) {
-  if (_ffmpegReady) return _ffmpeg;
-  if (_loadPromise) return _loadPromise;
-
-  _loadPromise = (async () => {
-    const { FFmpeg } = await import('@ffmpeg/ffmpeg');
-    const { toBlobURL } = await import('@ffmpeg/util');
-    _ffmpeg = new FFmpeg();
-    if (onProgress) {
-      _ffmpeg.on('progress', ({ progress }) => onProgress(Math.round(progress * 100)));
-    }
-    const base = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-    await _ffmpeg.load({
-      coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
-    });
-    _ffmpegReady = true;
-    return _ffmpeg;
-  })();
-
-  return _loadPromise;
-}
+import lamejs from 'lamejs';
 
 function parseTimeToSeconds(val) {
-  if (!val) return 0;
-  const parts = val.split(':').map(Number);
+  if (!val || !val.trim()) return 0;
+  const parts = val.trim().split(':').map(Number);
+  if (parts.some(isNaN)) return 0;
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
   if (parts.length === 2) return parts[0] * 60 + parts[1];
   return Number(parts[0]) || 0;
@@ -40,6 +15,73 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+function float32ToInt16(float32) {
+  const int16 = new Int16Array(float32.length);
+  for (let i = 0; i < float32.length; i++) {
+    const s = Math.max(-1, Math.min(1, float32[i]));
+    int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return int16;
+}
+
+async function processAudioFile(file, { compress, bitrate, trim, startSec, endSec, onProgress }) {
+  const arrayBuffer = await file.arrayBuffer();
+  onProgress(10);
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  onProgress(30);
+
+  let buf = audioBuffer;
+
+  if (trim && (startSec > 0 || endSec > 0)) {
+    const totalDuration = audioBuffer.duration;
+    const start = Math.max(0, startSec);
+    const end = endSec > 0 ? Math.min(endSec, totalDuration) : totalDuration;
+    if (end > start) {
+      const sr = audioBuffer.sampleRate;
+      const startSample = Math.floor(start * sr);
+      const numSamples = Math.floor((end - start) * sr);
+      const trimmed = audioCtx.createBuffer(audioBuffer.numberOfChannels, numSamples, sr);
+      for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+        trimmed.getChannelData(ch).set(audioBuffer.getChannelData(ch).subarray(startSample, startSample + numSamples));
+      }
+      buf = trimmed;
+    }
+  }
+  onProgress(50);
+
+  const channels = buf.numberOfChannels;
+  const sampleRate = buf.sampleRate;
+  const kbps = compress ? parseInt(bitrate, 10) : 128;
+
+  const encoder = new lamejs.Mp3Encoder(channels === 1 ? 1 : 2, sampleRate, kbps);
+  const blockSize = 1152;
+  const mp3Chunks = [];
+
+  const leftFloat = buf.getChannelData(0);
+  const rightFloat = channels > 1 ? buf.getChannelData(1) : buf.getChannelData(0);
+  const leftInt = float32ToInt16(leftFloat);
+  const rightInt = float32ToInt16(rightFloat);
+
+  const totalBlocks = Math.ceil(leftInt.length / blockSize);
+  for (let i = 0; i < leftInt.length; i += blockSize) {
+    const l = leftInt.subarray(i, i + blockSize);
+    const r = rightInt.subarray(i, i + blockSize);
+    const chunk = channels === 1 ? encoder.encodeBuffer(l) : encoder.encodeBuffer(l, r);
+    if (chunk.length > 0) mp3Chunks.push(chunk);
+    const block = Math.floor(i / blockSize);
+    if (block % 50 === 0) onProgress(50 + Math.floor((block / totalBlocks) * 45));
+  }
+
+  const tail = encoder.flush();
+  if (tail.length > 0) mp3Chunks.push(tail);
+  onProgress(98);
+
+  await audioCtx.close();
+  return new Blob(mp3Chunks, { type: 'audio/mpeg' });
+}
+
 export default function AudioProcessor({ file, onProcessed }) {
   const [open, setOpen] = useState(false);
   const [compressOn, setCompressOn] = useState(false);
@@ -48,17 +90,12 @@ export default function AudioProcessor({ file, onProcessed }) {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [processing, setProcessing] = useState(false);
-  const [loadingFFmpeg, setLoadingFFmpeg] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState(null); // { file, url, size }
+  const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const resultUrlRef = useRef(null);
 
-  useEffect(() => {
-    return () => {
-      if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
-    };
-  }, []);
+  useEffect(() => () => { if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current); }, []);
 
   useEffect(() => {
     setResult(null);
@@ -69,79 +106,34 @@ export default function AudioProcessor({ file, onProcessed }) {
   if (!file) return null;
 
   const handleProcess = async () => {
-    if (!compressOn && !trimOn) {
-      setError('Koi option select karein — Compress ya Trim (ya dono).');
-      return;
-    }
-    setError('');
-    setProcessing(true);
-    setProgress(0);
+    if (!compressOn && !trimOn) { setError('Compress ya Trim — koi ek option zaroori hai.'); return; }
+    const startSec = parseTimeToSeconds(startTime);
+    const endSec = parseTimeToSeconds(endTime);
+    if (trimOn && endSec > 0 && endSec <= startSec) { setError('End time, Start time se zyada hona chahiye.'); return; }
 
+    setError(''); setProcessing(true); setProgress(0);
     try {
-      setLoadingFFmpeg(true);
-      const ff = await loadFFmpeg((p) => setProgress(p));
-      setLoadingFFmpeg(false);
+      const blob = await processAudioFile(file, {
+        compress: compressOn, bitrate,
+        trim: trimOn, startSec, endSec,
+        onProgress: setProgress,
+      });
 
-      const { fetchFile } = await import('@ffmpeg/util');
-
-      const ext = file.name.split('.').pop().toLowerCase() || 'mp3';
-      const inputName = `input.${ext}`;
-      const outputName = 'output.mp3';
-
-      await ff.writeFile(inputName, await fetchFile(file));
-
-      const args = ['-i', inputName];
-
-      if (trimOn) {
-        const start = parseTimeToSeconds(startTime);
-        const end = parseTimeToSeconds(endTime);
-        if (trimOn && end > 0 && end <= start) {
-          setError('End time, start time se zyada hona chahiye.');
-          setProcessing(false);
-          return;
-        }
-        if (start > 0) args.push('-ss', String(start));
-        if (end > 0) args.push('-to', String(end));
-      }
-
-      if (compressOn) {
-        args.push('-codec:a', 'libmp3lame', '-b:a', `${bitrate}k`);
-      } else {
-        args.push('-codec:a', 'libmp3lame', '-b:a', '128k');
-      }
-
-      args.push('-y', outputName);
-
-      await ff.exec(args);
-
-      const data = await ff.readFile(outputName);
-      const blob = new Blob([data.buffer], { type: 'audio/mpeg' });
       const processedFile = new File([blob], file.name.replace(/\.[^.]+$/, '_processed.mp3'), { type: 'audio/mpeg' });
-
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
       const url = URL.createObjectURL(blob);
       resultUrlRef.current = url;
-
+      setProgress(100);
       setResult({ file: processedFile, url, size: blob.size });
-
-      await ff.deleteFile(inputName);
-      await ff.deleteFile(outputName);
     } catch (err) {
       console.error('[AudioProcessor]', err);
-      setError('Processing mein error aaya. File format check karein ya dobara try karein.');
+      setError(`Error: ${err.message || 'Audio process nahi hua.'}`);
     } finally {
       setProcessing(false);
-      setLoadingFFmpeg(false);
     }
   };
 
-  const handleUse = () => {
-    if (result) onProcessed(result.file, result.url);
-  };
-
-  const sizeReduction = result
-    ? Math.round((1 - result.size / file.size) * 100)
-    : null;
+  const sizeReduction = result ? Math.round((1 - result.size / file.size) * 100) : null;
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -157,21 +149,19 @@ export default function AudioProcessor({ file, onProcessed }) {
           cursor: 'pointer', transition: 'all .15s',
         }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
           <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
           <line x1="20" y1="4" x2="8.12" y2="15.88"/>
           <line x1="14.47" y1="14.48" x2="20" y2="20"/>
           <line x1="8.12" y1="8.12" x2="12" y2="12"/>
         </svg>
         Audio Tools {open ? '▲' : '▼'}
-        <span style={{ fontSize: 10, fontWeight: 600, opacity: 0.7, marginLeft: 2 }}>
-          (Compress / Trim)
-        </span>
+        <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.65 }}>(Compress / Trim)</span>
       </button>
 
       {open && (
         <div style={{
-          marginTop: 10, padding: '16px 18px',
+          marginTop: 8, padding: '16px 18px',
           background: 'var(--bg-card)', borderRadius: 12,
           border: '1px solid var(--divider)',
         }}>
@@ -182,88 +172,64 @@ export default function AudioProcessor({ file, onProcessed }) {
 
           {/* Compress */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 10 }}>
-            <input
-              type="checkbox"
-              checked={compressOn}
-              onChange={e => setCompressOn(e.target.checked)}
-              style={{ accentColor: 'var(--gold)', width: 15, height: 15 }}
-            />
-            <span style={{ color: 'var(--white)', fontSize: 13, fontWeight: 700 }}>Compress Audio</span>
-            <span style={{ color: 'var(--grey)', fontSize: 11 }}>(file size kam karo)</span>
+            <input type="checkbox" checked={compressOn} onChange={e => setCompressOn(e.target.checked)}
+              style={{ accentColor: 'var(--gold)', width: 15, height: 15 }} />
+            <span style={{ color: 'var(--white)', fontSize: 13, fontWeight: 700 }}>Compress</span>
+            <span style={{ color: 'var(--grey)', fontSize: 11 }}>— file size kam karo</span>
           </label>
 
           {compressOn && (
             <div style={{ marginLeft: 23, marginBottom: 14 }}>
-              <label style={{ color: 'var(--grey)', fontSize: 11, display: 'block', marginBottom: 5 }}>Bitrate (quality)</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
                 {[
-                  { val: '128', label: '128 kbps', hint: 'CD Quality' },
-                  { val: '96', label: '96 kbps', hint: 'Balanced' },
-                  { val: '64', label: '64 kbps', hint: 'Smaller' },
-                  { val: '48', label: '48 kbps', hint: 'Podcast' },
-                  { val: '32', label: '32 kbps', hint: 'Voice Only' },
+                  { val: '128', label: '128 kbps', hint: 'CD quality' },
+                  { val: '96',  label: '96 kbps',  hint: 'Balanced' },
+                  { val: '64',  label: '64 kbps',  hint: 'Smaller' },
+                  { val: '48',  label: '48 kbps',  hint: 'Podcast' },
+                  { val: '32',  label: '32 kbps',  hint: 'Voice only' },
                 ].map(({ val, label, hint }) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setBitrate(val)}
+                  <button key={val} type="button" onClick={() => setBitrate(val)} title={hint}
                     style={{
                       padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700,
                       background: bitrate === val ? 'rgba(212,168,67,.15)' : 'var(--bg-surface)',
                       color: bitrate === val ? 'var(--gold)' : 'var(--grey)',
                       border: `1px solid ${bitrate === val ? 'rgba(212,168,67,.4)' : 'var(--divider)'}`,
                       cursor: 'pointer',
-                    }}
-                    title={hint}
-                  >
+                    }}>
                     {label}
                   </button>
                 ))}
               </div>
-              <p style={{ color: 'var(--grey-dark)', fontSize: 10, marginTop: 6 }}>
-                Current: {formatBytes(file.size)} → estimated: ~{formatBytes(file.size * ({ '128': 0.75, '96': 0.55, '64': 0.38, '48': 0.28, '32': 0.18 }[bitrate]))}
+              <p style={{ color: 'var(--grey-dark)', fontSize: 10 }}>
+                {formatBytes(file.size)} → ~{formatBytes(file.size * ({ '128': 0.75, '96': 0.55, '64': 0.38, '48': 0.28, '32': 0.18 }[bitrate]))}
               </p>
             </div>
           )}
 
           {/* Trim */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 10 }}>
-            <input
-              type="checkbox"
-              checked={trimOn}
-              onChange={e => setTrimOn(e.target.checked)}
-              style={{ accentColor: 'var(--gold)', width: 15, height: 15 }}
-            />
-            <span style={{ color: 'var(--white)', fontSize: 13, fontWeight: 700 }}>Trim Audio</span>
-            <span style={{ color: 'var(--grey)', fontSize: 11 }}>(shuru/khatam set karo)</span>
+            <input type="checkbox" checked={trimOn} onChange={e => setTrimOn(e.target.checked)}
+              style={{ accentColor: 'var(--gold)', width: 15, height: 15 }} />
+            <span style={{ color: 'var(--white)', fontSize: 13, fontWeight: 700 }}>Trim</span>
+            <span style={{ color: 'var(--grey)', fontSize: 11 }}>— shuru / khatam set karo</span>
           </label>
 
           {trimOn && (
-            <div style={{ marginLeft: 23, marginBottom: 14, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ marginLeft: 23, marginBottom: 14, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div>
-                <label style={{ color: 'var(--grey)', fontSize: 11, display: 'block', marginBottom: 4 }}>Start Time</label>
-                <input
-                  type="text"
-                  value={startTime}
-                  onChange={e => setStartTime(e.target.value)}
-                  placeholder="0:00 ya 1:30:00"
-                  className="form-input"
-                  style={{ width: 130, padding: '6px 10px', fontSize: 12 }}
-                />
+                <label style={{ color: 'var(--grey)', fontSize: 11, display: 'block', marginBottom: 4 }}>Start</label>
+                <input type="text" value={startTime} onChange={e => setStartTime(e.target.value)}
+                  placeholder="0:00" className="form-input"
+                  style={{ width: 110, padding: '6px 10px', fontSize: 12 }} />
               </div>
               <div>
-                <label style={{ color: 'var(--grey)', fontSize: 11, display: 'block', marginBottom: 4 }}>End Time</label>
-                <input
-                  type="text"
-                  value={endTime}
-                  onChange={e => setEndTime(e.target.value)}
-                  placeholder="5:00 ya khaali"
-                  className="form-input"
-                  style={{ width: 130, padding: '6px 10px', fontSize: 12 }}
-                />
+                <label style={{ color: 'var(--grey)', fontSize: 11, display: 'block', marginBottom: 4 }}>End</label>
+                <input type="text" value={endTime} onChange={e => setEndTime(e.target.value)}
+                  placeholder="20:00" className="form-input"
+                  style={{ width: 110, padding: '6px 10px', fontSize: 12 }} />
               </div>
-              <p style={{ color: 'var(--grey-dark)', fontSize: 10, width: '100%', marginTop: -6 }}>
-                Format: MM:SS (e.g. 1:30) ya HH:MM:SS (e.g. 1:05:30). End khaali = file ka aakhir tak.
+              <p style={{ color: 'var(--grey-dark)', fontSize: 10, width: '100%', marginTop: -4 }}>
+                Format: MM:SS (e.g. 1:30) ya HH:MM:SS. End khaali = file aakhir tak.
               </p>
             </div>
           )}
@@ -277,74 +243,46 @@ export default function AudioProcessor({ file, onProcessed }) {
           {processing ? (
             <div style={{ marginTop: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{
-                  width: 14, height: 14, borderRadius: '50%',
-                  border: '2px solid var(--gold)', borderTopColor: 'transparent',
-                  animation: 'spin .7s linear infinite',
-                }} />
-                <span style={{ color: 'var(--grey-light)', fontSize: 12 }}>
-                  {loadingFFmpeg ? 'FFmpeg load ho raha hai (pehli baar ~2-3 sec)...' : `Processing... ${progress}%`}
-                </span>
+                <div style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid var(--gold)', borderTopColor: 'transparent', animation: 'spin .7s linear infinite' }} />
+                <span style={{ color: 'var(--grey-light)', fontSize: 12 }}>Processing... {progress}%</span>
               </div>
               <div style={{ height: 4, background: 'var(--divider)', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${progress}%`, background: 'var(--gold)', borderRadius: 4, transition: 'width .3s' }} />
+                <div style={{ height: '100%', width: `${progress}%`, background: 'var(--gold)', borderRadius: 4, transition: 'width .2s' }} />
               </div>
             </div>
           ) : result ? (
             <div style={{ marginTop: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-                <span style={{ color: '#10B981', fontSize: 12, fontWeight: 700 }}>
-                  ✓ Processing complete!
-                </span>
+                <span style={{ color: '#10B981', fontSize: 12, fontWeight: 700 }}>✓ Done!</span>
                 <span style={{ color: 'var(--grey)', fontSize: 11 }}>
                   {formatBytes(file.size)} → {formatBytes(result.size)}
-                  {sizeReduction > 0 && (
-                    <span style={{ color: '#10B981', marginLeft: 4 }}>({sizeReduction}% chota)</span>
-                  )}
-                  {sizeReduction <= 0 && (
-                    <span style={{ color: '#F97316', marginLeft: 4 }}>(asal file se bada — 128k try karein)</span>
-                  )}
+                  {sizeReduction > 0
+                    ? <span style={{ color: '#10B981', marginLeft: 4 }}>({sizeReduction}% chota)</span>
+                    : <span style={{ color: '#F97316', marginLeft: 4 }}>(original se bada — 128k try karein)</span>
+                  }
                 </span>
               </div>
               <audio controls src={result.url} style={{ width: '100%', height: 36, accentColor: 'var(--gold)', marginBottom: 10 }} />
               <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={handleUse}
-                  style={{
-                    padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                    background: 'rgba(16,185,129,.12)', color: '#10B981',
-                    border: '1px solid rgba(16,185,129,.3)', cursor: 'pointer',
-                  }}
-                >
-                  ✓ Yeh processed file use karein
+                <button type="button" onClick={() => onProcessed(result.file, result.url)}
+                  style={{ padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: 'rgba(16,185,129,.12)', color: '#10B981', border: '1px solid rgba(16,185,129,.3)', cursor: 'pointer' }}>
+                  ✓ Yeh file use karein
                 </button>
-                <button
-                  type="button"
-                  onClick={handleProcess}
-                  style={{
-                    padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                    background: 'var(--bg-surface)', color: 'var(--grey)',
-                    border: '1px solid var(--divider)', cursor: 'pointer',
-                  }}
-                >
-                  Dobara process karein
+                <button type="button" onClick={handleProcess}
+                  style={{ padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: 'var(--bg-surface)', color: 'var(--grey)', border: '1px solid var(--divider)', cursor: 'pointer' }}>
+                  Dobara
                 </button>
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={handleProcess}
-              disabled={!compressOn && !trimOn}
+            <button type="button" onClick={handleProcess} disabled={!compressOn && !trimOn}
               style={{
                 marginTop: 4, padding: '8px 20px', borderRadius: 8, fontSize: 12, fontWeight: 700,
                 background: (compressOn || trimOn) ? 'rgba(212,168,67,.15)' : 'var(--bg-surface)',
                 color: (compressOn || trimOn) ? 'var(--gold)' : 'var(--grey-dark)',
                 border: `1px solid ${(compressOn || trimOn) ? 'rgba(212,168,67,.4)' : 'var(--divider)'}`,
-                cursor: (compressOn || trimOn) ? 'pointer' : 'not-allowed', transition: 'all .15s',
-              }}
-            >
+                cursor: (compressOn || trimOn) ? 'pointer' : 'not-allowed',
+              }}>
               Process Audio
             </button>
           )}
