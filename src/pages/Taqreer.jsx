@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
-import { fetchList, KEYS } from '../api/listCache';
+import { fetchList, invalidateListCache, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -51,7 +51,7 @@ export default function Taqreer() {
       if (imageFile) fd.append('image', imageFile);
       if (editId) await client.post(`/ulemas/${editId}`, fd);
       else await client.post('/ulemas', fd);
-      resetForm(); fetchUlemas();
+      resetForm(); fetchUlemas(true);
     } catch (err) {
       setSaveError(formatApiError(err, 'Ulema save nahi hua.'));
     } finally { setSaving(false); }
@@ -67,8 +67,10 @@ export default function Taqreer() {
     if (!window.confirm('Ulema aur uske tamam audio delete ho jayenge. Sure?')) return;
     try {
       await client.delete(`/ulemas/${id}`);
-      fetchUlemas();
+      invalidateListCache(KEYS.ULEMAS);
+      setUlemas(prev => prev.filter(u => u.id !== id));
       if (selectedUlema?.id === id) setSelectedUlema(null);
+      fetchUlemas(true);
     } catch (err) {
       alert(formatApiError(err, 'Ulema delete nahi hua.'));
     }
@@ -80,7 +82,7 @@ export default function Taqreer() {
     return (
       <UlemaTracks
         ulema={selectedUlema}
-        onBack={() => { setSelectedUlema(null); fetchUlemas(); }}
+        onBack={() => { setSelectedUlema(null); fetchUlemas(true); }}
         onUlemaUpdated={(updated) => {
           setSelectedUlema(updated);
           setUlemas(prev => prev.map(u => (u.id === updated.id ? updated : u)));
@@ -106,7 +108,7 @@ export default function Taqreer() {
           </button>
         </div>
       </div>
-      <ErrorBanner error={fetchError} onRetry={fetchUlemas} />
+      <ErrorBanner error={fetchError} onRetry={() => fetchUlemas(true)} />
 
       {showForm && (
         <div className="form-card" style={{ marginBottom: 24 }}>

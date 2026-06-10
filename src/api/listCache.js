@@ -84,11 +84,18 @@ export function readStaleCache(key) {
 
 export function writeCache(key, data) {
   const list = sanitizeList(data);
-  if (!list.length) return;
   try {
     localStorage.setItem(key, JSON.stringify({ data: list, ts: Date.now() }));
   } catch {
     // ignore quota errors
+  }
+}
+
+export function invalidateListCache(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
   }
 }
 
