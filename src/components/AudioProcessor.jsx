@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import lamejs from 'lamejs';
+import { Mp3Encoder } from '@breezystack/lamejs';
 
 function parseTimeToSeconds(val) {
   if (!val || !val.trim()) return 0;
@@ -55,7 +55,7 @@ async function processAudioFile(file, { compress, bitrate, trim, startSec, endSe
   const sampleRate = buf.sampleRate;
   const kbps = compress ? parseInt(bitrate, 10) : 128;
 
-  const encoder = new lamejs.Mp3Encoder(channels === 1 ? 1 : 2, sampleRate, kbps);
+  const encoder = new Mp3Encoder(channels === 1 ? 1 : 2, sampleRate, kbps);
   const blockSize = 1152;
   const mp3Chunks = [];
 
