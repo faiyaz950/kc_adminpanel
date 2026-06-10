@@ -23,7 +23,7 @@ export const KEYS = {
   RECITERS: 'kc_admin_reciters_v2',
   ANJUMANS: 'kc_admin_anjumans_v1',
   MAULANAS: 'kc_admin_maulanas_v1',
-  ULEMAS: 'kc_admin_ulemas_v1',
+  ULEMAS: 'kc_admin_ulemas_v2',
   USERS: 'kc_admin_users_v1',
   MESSAGES: 'kc_admin_messages_v1',
   POPUPS: 'kc_admin_popups_v1',

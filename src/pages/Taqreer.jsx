@@ -29,7 +29,7 @@ export default function Taqreer() {
   const [fetchError, setFetchError] = useState('');
   const [search, setSearch] = useState('');
 
-  useEffect(() => { fetchUlemas(); }, []);
+  useEffect(() => { fetchUlemas(true); }, []);
 
   const fetchUlemas = (force = false) => fetchList({
     key: KEYS.ULEMAS,
@@ -67,13 +67,17 @@ export default function Taqreer() {
     if (!window.confirm('Ulema aur uske tamam audio delete ho jayenge. Sure?')) return;
     try {
       await client.delete(`/ulemas/${id}`);
-      invalidateListCache(KEYS.ULEMAS);
-      setUlemas(prev => prev.filter(u => u.id !== id));
-      if (selectedUlema?.id === id) setSelectedUlema(null);
-      fetchUlemas(true);
     } catch (err) {
-      alert(formatApiError(err, 'Ulema delete nahi hua.'));
+      // Already removed on server — stale cache entry; still refresh the list.
+      if (err?.response?.status !== 404) {
+        alert(formatApiError(err, 'Ulema delete nahi hua.'));
+        return;
+      }
     }
+    invalidateListCache(KEYS.ULEMAS);
+    setUlemas(prev => prev.filter(u => u.id !== id));
+    if (selectedUlema?.id === id) setSelectedUlema(null);
+    fetchUlemas(true);
   };
 
   const resetForm = () => { setForm(emptyForm); setEditId(null); setImageFile(null); setShowForm(false); setSaveError(''); };
