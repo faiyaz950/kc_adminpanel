@@ -9,6 +9,7 @@ import {
 } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
+import AudioProcessor from '../components/AudioProcessor';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana'];
 const LANGUAGES = {
@@ -461,6 +462,14 @@ export default function Tracks() {
                   <audio controls src={audioPreviewUrl || form.audio_url} key={audioPreviewUrl || form.audio_url}
                     style={{ width: '100%', height: 38, marginTop: 10, accentColor: 'var(--gold)', borderRadius: 8 }} />
                 )}
+                <AudioProcessor
+                  file={audioFile}
+                  onProcessed={(processedFile, processedUrl) => {
+                    setAudioFile(processedFile);
+                    if (audioPreviewUrl && audioPreviewUrl.startsWith('blob:')) URL.revokeObjectURL(audioPreviewUrl);
+                    setAudioPreviewUrl(processedUrl);
+                  }}
+                />
               </FormField>
               <FormField label="Cover Image" fullWidth>
                 <input type="file" accept="image/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }}

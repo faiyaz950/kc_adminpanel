@@ -4,6 +4,7 @@ import { formatApiError } from '../api/errors';
 import { fetchList, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
+import AudioProcessor from '../components/AudioProcessor';
 
 const OCCASIONS = ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat', 'General'];
 const emptyForm = { name: '', city: '', bio: '', is_verified: false, image_url: null };
@@ -470,6 +471,14 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
                   }}
                   required={!editId} />
                 {audioPreview && <audio controls src={audioPreview} style={{ marginTop: 10, width: '100%', height: 36, accentColor: 'var(--gold)' }} />}
+                <AudioProcessor
+                  file={audioFile}
+                  onProcessed={(processedFile, processedUrl) => {
+                    setAudioFile(processedFile);
+                    if (audioPreview?.startsWith('blob:')) URL.revokeObjectURL(audioPreview);
+                    setAudioPreview(processedUrl);
+                  }}
+                />
               </div>
               <div>
                 <label className="form-label">Cover Image (optional)</label>

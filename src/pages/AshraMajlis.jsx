@@ -4,6 +4,7 @@ import { formatApiError } from '../api/errors';
 import { fetchList, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
+import AudioProcessor from '../components/AudioProcessor';
 
 const ASHRA_DAYS = Array.from({ length: 10 }, (_, i) => i + 1);
 const emptyForm = { name: '', bio: '', image_url: null };
@@ -438,6 +439,14 @@ function MaulanaTracks({ maulana, onBack, onMaulanaUpdated }) {
                   }}
                   required={!editId} />
                 {audioPreview && <audio controls src={audioPreview} style={{ marginTop: 10, width: '100%', height: 36, accentColor: 'var(--gold)' }} />}
+                <AudioProcessor
+                  file={audioFile}
+                  onProcessed={(processedFile, processedUrl) => {
+                    setAudioFile(processedFile);
+                    if (audioPreview?.startsWith('blob:')) URL.revokeObjectURL(audioPreview);
+                    setAudioPreview(processedUrl);
+                  }}
+                />
               </div>
               <div>
                 <label className="form-label">Cover Image (optional)</label>

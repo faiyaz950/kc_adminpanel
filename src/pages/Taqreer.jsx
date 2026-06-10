@@ -4,6 +4,7 @@ import { formatApiError } from '../api/errors';
 import { fetchList, invalidateListCache, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
+import AudioProcessor from '../components/AudioProcessor';
 
 const TRACK_TYPES = [
   { value: 'ashra_majlis', label: 'Majalis' },
@@ -399,6 +400,14 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
               <div><label className="form-label">Audio {editId ? '(optional)' : '*'}</label>
                 <input type="file" accept="audio/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }} onChange={e => { const f = e.target.files[0]; setAudioFile(f); if (audioPreview?.startsWith('blob:')) URL.revokeObjectURL(audioPreview); setAudioPreview(f ? URL.createObjectURL(f) : null); }} required={!editId} />
                 {audioPreview && <audio controls src={audioPreview} style={{ marginTop: 10, width: '100%', height: 36, accentColor: 'var(--gold)' }} />}
+                <AudioProcessor
+                  file={audioFile}
+                  onProcessed={(processedFile, processedUrl) => {
+                    setAudioFile(processedFile);
+                    if (audioPreview?.startsWith('blob:')) URL.revokeObjectURL(audioPreview);
+                    setAudioPreview(processedUrl);
+                  }}
+                />
               </div>
               <div><label className="form-label">Cover Image (optional)</label><input type="file" accept="image/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }} onChange={e => setImageFile(e.target.files[0])} /></div>
             </div>
