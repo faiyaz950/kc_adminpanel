@@ -147,6 +147,53 @@ function WaveformTrimmer({ audioBuf, duration, startR, endR, onChange }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const dragging = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [playheadR, setPlayheadR] = useState(null);
+  const playCtxRef = useRef(null);
+  const srcRef = useRef(null);
+  const rafRef = useRef(null);
+  const playStartCtxTime = useRef(0);
+  const playStartSec = useRef(0);
+
+  const stopPlayback = useCallback(() => {
+    if (srcRef.current) { try { srcRef.current.stop(); } catch {} srcRef.current = null; }
+    if (playCtxRef.current) { playCtxRef.current.close(); playCtxRef.current = null; }
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    setPlaying(false);
+    setPlayheadR(null);
+  }, []);
+
+  useEffect(() => () => stopPlayback(), [stopPlayback]);
+
+  // Stop playback when handles move
+  useEffect(() => { if (playing) stopPlayback(); }, [startR, endR]); // eslint-disable-line
+
+  const startPlayback = useCallback(() => {
+    if (!audioBuf) return;
+    stopPlayback();
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ctx.createBufferSource();
+    src.buffer = audioBuf;
+    src.connect(ctx.destination);
+    const startSec = startR * duration;
+    const endSec = endR * duration;
+    src.start(0, startSec, endSec - startSec);
+    src.onended = stopPlayback;
+    playCtxRef.current = ctx;
+    srcRef.current = src;
+    playStartCtxTime.current = ctx.currentTime;
+    playStartSec.current = startSec;
+    setPlaying(true);
+
+    const tick = () => {
+      if (!playCtxRef.current) return;
+      const elapsed = playCtxRef.current.currentTime - playStartCtxTime.current;
+      const r = (playStartSec.current + elapsed) / duration;
+      setPlayheadR(Math.min(r, endR));
+      if (r < endR) rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [audioBuf, duration, startR, endR, stopPlayback]);
 
   useEffect(() => {
     if (!canvasRef.current || !audioBuf) return;
@@ -215,7 +262,7 @@ function WaveformTrimmer({ audioBuf, duration, startR, endR, onChange }) {
       >
         <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: 80 }} />
 
-        {/* Selected region border top/bottom */}
+        {/* Selected region borders */}
         <div style={{
           position: 'absolute', top: 0,
           left: `${startR * 100}%`, width: `${(endR - startR) * 100}%`, height: '100%',
@@ -223,17 +270,23 @@ function WaveformTrimmer({ audioBuf, duration, startR, endR, onChange }) {
           pointerEvents: 'none',
         }} />
 
+        {/* Playhead */}
+        {playheadR !== null && (
+          <div style={{
+            position: 'absolute', top: 0, left: `${playheadR * 100}%`,
+            width: 2, height: '100%', background: '#fff',
+            transform: 'translateX(-1px)', pointerEvents: 'none',
+            boxShadow: '0 0 6px rgba(255,255,255,0.6)',
+          }} />
+        )}
+
         {/* Left handle */}
-        <div
-          {...handle('left')}
-          style={{
-            position: 'absolute', top: 0, left: `${startR * 100}%`,
-            width: 22, height: '100%', cursor: 'ew-resize',
-            transform: 'translateX(-50%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 10,
-          }}
-        >
+        <div {...handle('left')} style={{
+          position: 'absolute', top: 0, left: `${startR * 100}%`,
+          width: 22, height: '100%', cursor: 'ew-resize',
+          transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10,
+        }}>
           <div style={{
             width: 14, height: 36, background: 'var(--gold)', borderRadius: 4,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
@@ -244,16 +297,12 @@ function WaveformTrimmer({ audioBuf, duration, startR, endR, onChange }) {
         </div>
 
         {/* Right handle */}
-        <div
-          {...handle('right')}
-          style={{
-            position: 'absolute', top: 0, left: `${endR * 100}%`,
-            width: 22, height: '100%', cursor: 'ew-resize',
-            transform: 'translateX(-50%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 10,
-          }}
-        >
+        <div {...handle('right')} style={{
+          position: 'absolute', top: 0, left: `${endR * 100}%`,
+          width: 22, height: '100%', cursor: 'ew-resize',
+          transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10,
+        }}>
           <div style={{
             width: 14, height: 36, background: 'var(--gold)', borderRadius: 4,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
@@ -264,27 +313,43 @@ function WaveformTrimmer({ audioBuf, duration, startR, endR, onChange }) {
         </div>
       </div>
 
-      {/* Time labels */}
+      {/* Time labels + play button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 9, color: 'var(--grey-dark)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Start</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
-              {formatTime(startR * duration)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {/* Play/Stop button */}
+          <button
+            type="button"
+            onClick={playing ? stopPlayback : startPlayback}
+            title={playing ? 'Rokein' : 'Selected hissa sunein'}
+            style={{
+              width: 34, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer',
+              background: playing ? 'rgba(239,68,68,.15)' : 'rgba(212,168,67,.15)',
+              color: playing ? '#EF4444' : 'var(--gold)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: playing ? '0 0 0 1px rgba(239,68,68,.3)' : '0 0 0 1px rgba(212,168,67,.3)',
+              transition: 'all .15s',
+            }}
+          >
+            {playing
+              ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="4" height="16" rx="1"/><rect x="15" y="4" width="4" height="16" rx="1"/></svg>
+              : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>
+            }
+          </button>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 9, color: 'var(--grey-dark)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Start</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>{formatTime(startR * duration)}</div>
             </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 9, color: 'var(--grey-dark)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>End</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
-              {formatTime(endR * duration)}
+            <div>
+              <div style={{ fontSize: 9, color: 'var(--grey-dark)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>End</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>{formatTime(endR * duration)}</div>
             </div>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 9, color: 'var(--grey-dark)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Selected</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--grey-light)', fontVariantNumeric: 'tabular-nums' }}>
-            {formatTime(selDuration)}
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--grey-light)', fontVariantNumeric: 'tabular-nums' }}>{formatTime(selDuration)}</div>
         </div>
       </div>
 
