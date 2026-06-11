@@ -24,61 +24,83 @@ function float32ToInt16(float32) {
   return int16;
 }
 
+const LAMEJS_SAMPLE_RATES = [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000];
+
+function nearestSupportedRate(rate) {
+  return LAMEJS_SAMPLE_RATES.reduce((a, b) => Math.abs(b - rate) < Math.abs(a - rate) ? b : a);
+}
+
+async function resampleBuffer(buf, targetRate) {
+  if (buf.sampleRate === targetRate) return buf;
+  const numSamples = Math.ceil(buf.duration * targetRate);
+  const offlineCtx = new OfflineAudioContext(buf.numberOfChannels, numSamples, targetRate);
+  const src = offlineCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(offlineCtx.destination);
+  src.start(0);
+  return offlineCtx.startRendering();
+}
+
 async function processAudioFile(file, { compress, bitrate, trim, startSec, endSec, onProgress }) {
   const arrayBuffer = await file.arrayBuffer();
-  onProgress(10);
+  onProgress(8);
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  onProgress(30);
+  let buf = await audioCtx.decodeAudioData(arrayBuffer);
+  await audioCtx.close();
+  onProgress(20);
 
-  let buf = audioBuffer;
-
+  // Trim first (before resampling — fewer samples to resample)
   if (trim && (startSec > 0 || endSec > 0)) {
-    const totalDuration = audioBuffer.duration;
     const start = Math.max(0, startSec);
-    const end = endSec > 0 ? Math.min(endSec, totalDuration) : totalDuration;
+    const end = endSec > 0 ? Math.min(endSec, buf.duration) : buf.duration;
     if (end > start) {
-      const sr = audioBuffer.sampleRate;
+      const sr = buf.sampleRate;
       const startSample = Math.floor(start * sr);
       const numSamples = Math.floor((end - start) * sr);
-      const trimmed = audioCtx.createBuffer(audioBuffer.numberOfChannels, numSamples, sr);
-      for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
-        trimmed.getChannelData(ch).set(audioBuffer.getChannelData(ch).subarray(startSample, startSample + numSamples));
+      const trimCtx = new OfflineAudioContext(buf.numberOfChannels, numSamples, sr);
+      const trimmed = trimCtx.createBuffer(buf.numberOfChannels, numSamples, sr);
+      for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+        trimmed.getChannelData(ch).set(buf.getChannelData(ch).subarray(startSample, startSample + numSamples));
       }
       buf = trimmed;
     }
   }
+  onProgress(35);
+
+  // Resample to a rate lamejs supports
+  const targetRate = nearestSupportedRate(buf.sampleRate);
+  buf = await resampleBuffer(buf, targetRate);
   onProgress(50);
 
-  const channels = buf.numberOfChannels;
-  const sampleRate = buf.sampleRate;
+  const numChannels = Math.min(buf.numberOfChannels, 2); // lamejs max 2ch
   const kbps = compress ? parseInt(bitrate, 10) : 128;
-
-  const encoder = new Mp3Encoder(channels === 1 ? 1 : 2, sampleRate, kbps);
+  const encoder = new Mp3Encoder(numChannels, buf.sampleRate, kbps);
   const blockSize = 1152;
   const mp3Chunks = [];
 
-  const leftFloat = buf.getChannelData(0);
-  const rightFloat = channels > 1 ? buf.getChannelData(1) : buf.getChannelData(0);
-  const leftInt = float32ToInt16(leftFloat);
-  const rightInt = float32ToInt16(rightFloat);
+  const leftInt = float32ToInt16(buf.getChannelData(0));
+  const rightInt = numChannels > 1 ? float32ToInt16(buf.getChannelData(1)) : null;
 
   const totalBlocks = Math.ceil(leftInt.length / blockSize);
-  for (let i = 0; i < leftInt.length; i += blockSize) {
-    const l = leftInt.subarray(i, i + blockSize);
-    const r = rightInt.subarray(i, i + blockSize);
-    const chunk = channels === 1 ? encoder.encodeBuffer(l) : encoder.encodeBuffer(l, r);
-    if (chunk.length > 0) mp3Chunks.push(chunk);
-    const block = Math.floor(i / blockSize);
-    if (block % 50 === 0) onProgress(50 + Math.floor((block / totalBlocks) * 45));
+  for (let b = 0; b < totalBlocks; b++) {
+    const start = b * blockSize;
+    const l = leftInt.subarray(start, start + blockSize);
+    const chunk = rightInt
+      ? encoder.encodeBuffer(l, rightInt.subarray(start, start + blockSize))
+      : encoder.encodeBuffer(l);
+    if (chunk.length > 0) mp3Chunks.push(new Uint8Array(chunk));
+    // Yield to browser every 80 blocks to avoid freezing
+    if (b % 80 === 0) {
+      onProgress(50 + Math.floor((b / totalBlocks) * 46));
+      await new Promise(r => setTimeout(r, 0));
+    }
   }
 
   const tail = encoder.flush();
-  if (tail.length > 0) mp3Chunks.push(tail);
-  onProgress(98);
+  if (tail.length > 0) mp3Chunks.push(new Uint8Array(tail));
+  onProgress(99);
 
-  await audioCtx.close();
   return new Blob(mp3Chunks, { type: 'audio/mpeg' });
 }
 
