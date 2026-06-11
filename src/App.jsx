@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Tracks from './pages/Tracks';
+import FeaturedAlbums from './pages/FeaturedAlbums';
 import Reciters from './pages/Reciters';
 import Anjumans from './pages/Anjumans';
 import AshraMajlis from './pages/AshraMajlis';
@@ -135,6 +136,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/tracks" element={<Tracks />} />
+              <Route path="/featured-albums" element={<FeaturedAlbums />} />
               <Route path="/reciters" element={<Reciters />} />
               <Route path="/anjumans" element={<Anjumans />} />
               <Route path="/ashra-majlis" element={<AshraMajlis />} />
