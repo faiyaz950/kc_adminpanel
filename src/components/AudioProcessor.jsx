@@ -1,13 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Mp3Encoder } from '@breezystack/lamejs';
 
-function parseTimeToSeconds(val) {
-  if (!val || !val.trim()) return 0;
-  const parts = val.trim().split(':').map(Number);
-  if (parts.some(isNaN)) return 0;
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  if (parts.length === 2) return parts[0] * 60 + parts[1];
-  return Number(parts[0]) || 0;
+/* ─── Helpers ─────────────────────────────────────────────────── */
+
+function formatTime(sec) {
+  if (!isFinite(sec) || sec < 0) return '0:00';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function formatBytes(bytes) {
@@ -24,21 +26,18 @@ function float32ToInt16(float32) {
   return int16;
 }
 
-const LAMEJS_SAMPLE_RATES = [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000];
-
-function nearestSupportedRate(rate) {
-  return LAMEJS_SAMPLE_RATES.reduce((a, b) => Math.abs(b - rate) < Math.abs(a - rate) ? b : a);
-}
+const LAMEJS_RATES = [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000];
+const nearestRate = r => LAMEJS_RATES.reduce((a, b) => Math.abs(b - r) < Math.abs(a - r) ? b : a);
 
 async function resampleBuffer(buf, targetRate) {
   if (buf.sampleRate === targetRate) return buf;
-  const numSamples = Math.ceil(buf.duration * targetRate);
-  const offlineCtx = new OfflineAudioContext(buf.numberOfChannels, numSamples, targetRate);
-  const src = offlineCtx.createBufferSource();
+  const frames = Math.ceil(buf.duration * targetRate);
+  const ctx = new OfflineAudioContext(buf.numberOfChannels, frames, targetRate);
+  const src = ctx.createBufferSource();
   src.buffer = buf;
-  src.connect(offlineCtx.destination);
+  src.connect(ctx.destination);
   src.start(0);
-  return offlineCtx.startRendering();
+  return ctx.startRendering();
 }
 
 async function processAudioFile(file, { compress, bitrate, trim, startSec, endSec, onProgress }) {
@@ -50,67 +49,309 @@ async function processAudioFile(file, { compress, bitrate, trim, startSec, endSe
   await audioCtx.close();
   onProgress(20);
 
-  // Trim first (before resampling — fewer samples to resample)
   if (trim && (startSec > 0 || endSec > 0)) {
     const start = Math.max(0, startSec);
     const end = endSec > 0 ? Math.min(endSec, buf.duration) : buf.duration;
     if (end > start) {
       const sr = buf.sampleRate;
-      const startSample = Math.floor(start * sr);
-      const numSamples = Math.floor((end - start) * sr);
-      const trimCtx = new OfflineAudioContext(buf.numberOfChannels, numSamples, sr);
-      const trimmed = trimCtx.createBuffer(buf.numberOfChannels, numSamples, sr);
-      for (let ch = 0; ch < buf.numberOfChannels; ch++) {
-        trimmed.getChannelData(ch).set(buf.getChannelData(ch).subarray(startSample, startSample + numSamples));
-      }
+      const s0 = Math.floor(start * sr);
+      const n = Math.floor((end - start) * sr);
+      const trimCtx = new OfflineAudioContext(buf.numberOfChannels, n, sr);
+      const trimmed = trimCtx.createBuffer(buf.numberOfChannels, n, sr);
+      for (let ch = 0; ch < buf.numberOfChannels; ch++)
+        trimmed.getChannelData(ch).set(buf.getChannelData(ch).subarray(s0, s0 + n));
       buf = trimmed;
     }
   }
   onProgress(35);
 
-  // Resample to a rate lamejs supports
-  const targetRate = nearestSupportedRate(buf.sampleRate);
-  buf = await resampleBuffer(buf, targetRate);
+  buf = await resampleBuffer(buf, nearestRate(buf.sampleRate));
   onProgress(50);
 
-  const numChannels = Math.min(buf.numberOfChannels, 2); // lamejs max 2ch
+  const numCh = Math.min(buf.numberOfChannels, 2);
   const kbps = compress ? parseInt(bitrate, 10) : 128;
-  const encoder = new Mp3Encoder(numChannels, buf.sampleRate, kbps);
+  const encoder = new Mp3Encoder(numCh, buf.sampleRate, kbps);
   const blockSize = 1152;
-  const mp3Chunks = [];
-
+  const chunks = [];
   const leftInt = float32ToInt16(buf.getChannelData(0));
-  const rightInt = numChannels > 1 ? float32ToInt16(buf.getChannelData(1)) : null;
-
+  const rightInt = numCh > 1 ? float32ToInt16(buf.getChannelData(1)) : null;
   const totalBlocks = Math.ceil(leftInt.length / blockSize);
+
   for (let b = 0; b < totalBlocks; b++) {
-    const start = b * blockSize;
-    const l = leftInt.subarray(start, start + blockSize);
+    const s = b * blockSize;
+    const l = leftInt.subarray(s, s + blockSize);
     const chunk = rightInt
-      ? encoder.encodeBuffer(l, rightInt.subarray(start, start + blockSize))
+      ? encoder.encodeBuffer(l, rightInt.subarray(s, s + blockSize))
       : encoder.encodeBuffer(l);
-    if (chunk.length > 0) mp3Chunks.push(new Uint8Array(chunk));
-    // Yield to browser every 80 blocks to avoid freezing
+    if (chunk.length > 0) chunks.push(new Uint8Array(chunk));
     if (b % 80 === 0) {
       onProgress(50 + Math.floor((b / totalBlocks) * 46));
       await new Promise(r => setTimeout(r, 0));
     }
   }
-
   const tail = encoder.flush();
-  if (tail.length > 0) mp3Chunks.push(new Uint8Array(tail));
+  if (tail.length > 0) chunks.push(new Uint8Array(tail));
   onProgress(99);
-
-  return new Blob(mp3Chunks, { type: 'audio/mpeg' });
+  return new Blob(chunks, { type: 'audio/mpeg' });
 }
+
+/* ─── Waveform + drag-trim component ──────────────────────────── */
+
+function drawWaveform(canvas, audioBuf, startR, endR) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width;
+  const H = canvas.height;
+  const data = audioBuf.getChannelData(0);
+  const step = Math.max(1, Math.floor(data.length / W));
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#0e1117';
+  ctx.fillRect(0, 0, W, H);
+
+  // Center line
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, H / 2);
+  ctx.lineTo(W, H / 2);
+  ctx.stroke();
+
+  const startX = Math.round(startR * W);
+  const endX = Math.round(endR * W);
+
+  for (let x = 0; x < W; x++) {
+    let min = 0, max = 0;
+    for (let j = 0; j < step; j++) {
+      const v = data[x * step + j] || 0;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    const inSelection = x >= startX && x <= endX;
+    ctx.strokeStyle = inSelection ? 'rgba(212,168,67,0.85)' : 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 0.5, ((1 - max) / 2) * H);
+    ctx.lineTo(x + 0.5, ((1 - min) / 2) * H);
+    ctx.stroke();
+  }
+
+  // Darken outside selection
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, startX, H);
+  ctx.fillRect(endX, 0, W - endX, H);
+}
+
+function WaveformTrimmer({ audioBuf, duration, startR, endR, onChange }) {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const dragging = useRef(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || !audioBuf) return;
+    const canvas = canvasRef.current;
+    canvas.width = canvas.offsetWidth * window.devicePixelRatio || 800;
+    canvas.height = 80 * window.devicePixelRatio || 80;
+    drawWaveform(canvas, audioBuf, startR, endR);
+  }, [audioBuf, startR, endR]);
+
+  const getR = useCallback((clientX) => {
+    const rect = containerRef.current.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  }, []);
+
+  const onMouseDown = useCallback((handle) => (e) => {
+    e.preventDefault();
+    dragging.current = handle;
+    const onMove = (e) => {
+      const r = getR(e.clientX);
+      if (dragging.current === 'left')
+        onChange({ startR: Math.min(r, endR - 0.005), endR });
+      else
+        onChange({ startR, endR: Math.max(r, startR + 0.005) });
+    };
+    const onUp = () => {
+      dragging.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [startR, endR, onChange, getR]);
+
+  const onTouchStart = useCallback((handle) => (e) => {
+    e.preventDefault();
+    dragging.current = handle;
+    const onMove = (e) => {
+      const r = getR(e.touches[0].clientX);
+      if (dragging.current === 'left')
+        onChange({ startR: Math.min(r, endR - 0.005), endR });
+      else
+        onChange({ startR, endR: Math.max(r, startR + 0.005) });
+    };
+    const onUp = () => {
+      dragging.current = null;
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  }, [startR, endR, onChange, getR]);
+
+  const handle = (side) => ({
+    onMouseDown: onMouseDown(side),
+    onTouchStart: onTouchStart(side),
+  });
+
+  const selDuration = (endR - startR) * duration;
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      {/* Waveform */}
+      <div
+        ref={containerRef}
+        style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', userSelect: 'none', border: '1px solid var(--divider)' }}
+      >
+        <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: 80 }} />
+
+        {/* Selected region border top/bottom */}
+        <div style={{
+          position: 'absolute', top: 0,
+          left: `${startR * 100}%`, width: `${(endR - startR) * 100}%`, height: '100%',
+          borderLeft: '2px solid var(--gold)', borderRight: '2px solid var(--gold)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Left handle */}
+        <div
+          {...handle('left')}
+          style={{
+            position: 'absolute', top: 0, left: `${startR * 100}%`,
+            width: 22, height: '100%', cursor: 'ew-resize',
+            transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10,
+          }}
+        >
+          <div style={{
+            width: 14, height: 36, background: 'var(--gold)', borderRadius: 4,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+          }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: 2, height: 2, borderRadius: '50%', background: '#000' }} />)}
+          </div>
+        </div>
+
+        {/* Right handle */}
+        <div
+          {...handle('right')}
+          style={{
+            position: 'absolute', top: 0, left: `${endR * 100}%`,
+            width: 22, height: '100%', cursor: 'ew-resize',
+            transform: 'translateX(-50%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10,
+          }}
+        >
+          <div style={{
+            width: 14, height: 36, background: 'var(--gold)', borderRadius: 4,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+          }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: 2, height: 2, borderRadius: '50%', background: '#000' }} />)}
+          </div>
+        </div>
+      </div>
+
+      {/* Time labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: 'var(--grey-dark)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Start</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
+              {formatTime(startR * duration)}
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: 'var(--grey-dark)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>End</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', fontVariantNumeric: 'tabular-nums' }}>
+              {formatTime(endR * duration)}
+            </div>
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 9, color: 'var(--grey-dark)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Selected</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--grey-light)', fontVariantNumeric: 'tabular-nums' }}>
+            {formatTime(selDuration)}
+          </div>
+        </div>
+      </div>
+
+      <p style={{ fontSize: 10, color: 'var(--grey-dark)', marginTop: 6 }}>
+        Gold handles pakad kar khenchein — ya sidha number click karein aur type karein
+      </p>
+
+      {/* Editable time inputs */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 10, color: 'var(--grey)', display: 'block', marginBottom: 3 }}>Start (MM:SS)</label>
+          <input
+            type="text"
+            className="form-input"
+            defaultValue={formatTime(startR * duration)}
+            key={`s-${Math.round(startR * 100)}`}
+            placeholder="0:00"
+            onBlur={e => {
+              const sec = parseManualTime(e.target.value, duration);
+              if (sec !== null) onChange({ startR: Math.min(sec / duration, endR - 0.005), endR });
+            }}
+            style={{ padding: '5px 8px', fontSize: 12 }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 10, color: 'var(--grey)', display: 'block', marginBottom: 3 }}>End (MM:SS)</label>
+          <input
+            type="text"
+            className="form-input"
+            defaultValue={formatTime(endR * duration)}
+            key={`e-${Math.round(endR * 100)}`}
+            placeholder={formatTime(duration)}
+            onBlur={e => {
+              const sec = parseManualTime(e.target.value, duration);
+              if (sec !== null) onChange({ startR, endR: Math.max(sec / duration, startR + 0.005) });
+            }}
+            style={{ padding: '5px 8px', fontSize: 12 }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function parseManualTime(val, duration) {
+  if (!val || !val.trim()) return null;
+  const parts = val.trim().split(':').map(Number);
+  if (parts.some(isNaN)) return null;
+  let sec = 0;
+  if (parts.length === 3) sec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+  else if (parts.length === 2) sec = parts[0] * 60 + parts[1];
+  else sec = parts[0];
+  return Math.max(0, Math.min(sec, duration));
+}
+
+/* ─── Main AudioProcessor ─────────────────────────────────────── */
 
 export default function AudioProcessor({ file, onProcessed }) {
   const [open, setOpen] = useState(false);
   const [compressOn, setCompressOn] = useState(false);
   const [bitrate, setBitrate] = useState('96');
   const [trimOn, setTrimOn] = useState(false);
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [startR, setStartR] = useState(0);
+  const [endR, setEndR] = useState(1);
+  const [audioBuf, setAudioBuf] = useState(null);
+  const [duration, setDuration] = useState(0);
+  const [loadingWave, setLoadingWave] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
@@ -120,19 +361,33 @@ export default function AudioProcessor({ file, onProcessed }) {
   useEffect(() => () => { if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current); }, []);
 
   useEffect(() => {
-    setResult(null);
-    setError('');
-    setOpen(false);
+    setResult(null); setError(''); setOpen(false);
+    setAudioBuf(null); setStartR(0); setEndR(1);
   }, [file]);
 
-  if (!file) return null;
+  // Decode audio for waveform when trim is turned on
+  useEffect(() => {
+    if (!trimOn || !file || audioBuf) return;
+    setLoadingWave(true);
+    file.arrayBuffer().then(ab => {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      return ctx.decodeAudioData(ab).then(buf => { ctx.close(); return buf; });
+    }).then(buf => {
+      setAudioBuf(buf);
+      setDuration(buf.duration);
+      setStartR(0);
+      setEndR(1);
+    }).catch(() => {}).finally(() => setLoadingWave(false));
+  }, [trimOn, file, audioBuf]);
+
+  const handleChange = useCallback(({ startR: s, endR: e }) => {
+    setStartR(s); setEndR(e);
+  }, []);
 
   const handleProcess = async () => {
     if (!compressOn && !trimOn) { setError('Compress ya Trim — koi ek option zaroori hai.'); return; }
-    const startSec = parseTimeToSeconds(startTime);
-    const endSec = parseTimeToSeconds(endTime);
-    if (trimOn && endSec > 0 && endSec <= startSec) { setError('End time, Start time se zyada hona chahiye.'); return; }
-
+    const startSec = trimOn ? startR * duration : 0;
+    const endSec = trimOn ? endR * duration : 0;
     setError(''); setProcessing(true); setProgress(0);
     try {
       const blob = await processAudioFile(file, {
@@ -140,7 +395,6 @@ export default function AudioProcessor({ file, onProcessed }) {
         trim: trimOn, startSec, endSec,
         onProgress: setProgress,
       });
-
       const processedFile = new File([blob], file.name.replace(/\.[^.]+$/, '_processed.mp3'), { type: 'audio/mpeg' });
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
       const url = URL.createObjectURL(blob);
@@ -156,12 +410,11 @@ export default function AudioProcessor({ file, onProcessed }) {
   };
 
   const sizeReduction = result ? Math.round((1 - result.size / file.size) * 100) : null;
+  if (!file) return null;
 
   return (
     <div style={{ marginTop: 10 }}>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
+      <button type="button" onClick={() => setOpen(o => !o)}
         style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
@@ -169,8 +422,7 @@ export default function AudioProcessor({ file, onProcessed }) {
           color: open ? 'var(--gold)' : 'var(--grey)',
           border: `1px solid ${open ? 'rgba(212,168,67,.35)' : 'var(--divider)'}`,
           cursor: 'pointer', transition: 'all .15s',
-        }}
-      >
+        }}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
           <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>
           <line x1="20" y1="4" x2="8.12" y2="15.88"/>
@@ -182,17 +434,13 @@ export default function AudioProcessor({ file, onProcessed }) {
       </button>
 
       {open && (
-        <div style={{
-          marginTop: 8, padding: '16px 18px',
-          background: 'var(--bg-card)', borderRadius: 12,
-          border: '1px solid var(--divider)',
-        }}>
+        <div style={{ marginTop: 8, padding: '16px 18px', background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--divider)' }}>
           <p style={{ fontSize: 11, color: 'var(--grey)', marginBottom: 14 }}>
             File: <span style={{ color: 'var(--grey-light)' }}>{file.name}</span>
             {' · '}<span style={{ color: 'var(--grey-light)' }}>{formatBytes(file.size)}</span>
           </p>
 
-          {/* Compress */}
+          {/* ── Compress ── */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 10 }}>
             <input type="checkbox" checked={compressOn} onChange={e => setCompressOn(e.target.checked)}
               style={{ accentColor: 'var(--gold)', width: 15, height: 15 }} />
@@ -201,7 +449,7 @@ export default function AudioProcessor({ file, onProcessed }) {
           </label>
 
           {compressOn && (
-            <div style={{ marginLeft: 23, marginBottom: 14 }}>
+            <div style={{ marginLeft: 23, marginBottom: 16 }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
                 {[
                   { val: '128', label: '128 kbps', hint: 'CD quality' },
@@ -223,45 +471,46 @@ export default function AudioProcessor({ file, onProcessed }) {
                 ))}
               </div>
               <p style={{ color: 'var(--grey-dark)', fontSize: 10 }}>
-                {formatBytes(file.size)} → ~{formatBytes(file.size * ({ '128': 0.75, '96': 0.55, '64': 0.38, '48': 0.28, '32': 0.18 }[bitrate]))}
+                {formatBytes(file.size)} → ~{formatBytes(file.size * ({'128':0.75,'96':0.55,'64':0.38,'48':0.28,'32':0.18}[bitrate]))}
               </p>
             </div>
           )}
 
-          {/* Trim */}
+          {/* ── Trim ── */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 10 }}>
             <input type="checkbox" checked={trimOn} onChange={e => setTrimOn(e.target.checked)}
               style={{ accentColor: 'var(--gold)', width: 15, height: 15 }} />
             <span style={{ color: 'var(--white)', fontSize: 13, fontWeight: 700 }}>Trim</span>
-            <span style={{ color: 'var(--grey)', fontSize: 11 }}>— shuru / khatam set karo</span>
+            <span style={{ color: 'var(--grey)', fontSize: 11 }}>— shuru / khatam drag karein</span>
           </label>
 
           {trimOn && (
-            <div style={{ marginLeft: 23, marginBottom: 14, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div>
-                <label style={{ color: 'var(--grey)', fontSize: 11, display: 'block', marginBottom: 4 }}>Start</label>
-                <input type="text" value={startTime} onChange={e => setStartTime(e.target.value)}
-                  placeholder="0:00" className="form-input"
-                  style={{ width: 110, padding: '6px 10px', fontSize: 12 }} />
-              </div>
-              <div>
-                <label style={{ color: 'var(--grey)', fontSize: 11, display: 'block', marginBottom: 4 }}>End</label>
-                <input type="text" value={endTime} onChange={e => setEndTime(e.target.value)}
-                  placeholder="20:00" className="form-input"
-                  style={{ width: 110, padding: '6px 10px', fontSize: 12 }} />
-              </div>
-              <p style={{ color: 'var(--grey-dark)', fontSize: 10, width: '100%', marginTop: -4 }}>
-                Format: MM:SS (e.g. 1:30) ya HH:MM:SS. End khaali = file aakhir tak.
-              </p>
+            <div style={{ marginLeft: 0, marginBottom: 16 }}>
+              {loadingWave ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '20px 0', color: 'var(--grey)', fontSize: 12 }}>
+                  <div style={{ width: 13, height: 13, borderRadius: '50%', border: '2px solid var(--gold)', borderTopColor: 'transparent', animation: 'spin .7s linear infinite' }} />
+                  Waveform load ho raha hai...
+                </div>
+              ) : audioBuf ? (
+                <WaveformTrimmer
+                  audioBuf={audioBuf}
+                  duration={duration}
+                  startR={startR}
+                  endR={endR}
+                  onChange={handleChange}
+                />
+              ) : null}
             </div>
           )}
 
+          {/* ── Error ── */}
           {error && (
             <div style={{ color: '#EF4444', fontSize: 12, marginBottom: 10, padding: '8px 12px', background: 'rgba(239,68,68,.08)', borderRadius: 8, border: '1px solid rgba(239,68,68,.2)' }}>
               {error}
             </div>
           )}
 
+          {/* ── Processing / Result / Button ── */}
           {processing ? (
             <div style={{ marginTop: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -273,14 +522,14 @@ export default function AudioProcessor({ file, onProcessed }) {
               </div>
             </div>
           ) : result ? (
-            <div style={{ marginTop: 4 }}>
+            <div style={{ marginTop: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                 <span style={{ color: '#10B981', fontSize: 12, fontWeight: 700 }}>✓ Done!</span>
                 <span style={{ color: 'var(--grey)', fontSize: 11 }}>
                   {formatBytes(file.size)} → {formatBytes(result.size)}
                   {sizeReduction > 0
                     ? <span style={{ color: '#10B981', marginLeft: 4 }}>({sizeReduction}% chota)</span>
-                    : <span style={{ color: '#F97316', marginLeft: 4 }}>(original se bada — 128k try karein)</span>
+                    : <span style={{ color: '#F97316', marginLeft: 4 }}>(bada hua — 128k try karein)</span>
                   }
                 </span>
               </div>
