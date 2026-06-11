@@ -7,7 +7,7 @@ import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
 
 const OCCASIONS = ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat', 'General'];
-const emptyForm = { name: '', city: '', bio: '', is_verified: false, image_url: null };
+const emptyForm = { name: '', state: '', city: '', bio: '', is_verified: false, image_url: null };
 
 export default function Anjumans() {
   const [anjumans, setAnjumans] = useState([]);
@@ -39,8 +39,11 @@ export default function Anjumans() {
     setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
-      fd.append('name', form.name); fd.append('city', form.city);
-      fd.append('bio', form.bio || ''); fd.append('is_verified', form.is_verified ? '1' : '0');
+      fd.append('name', form.name);
+      fd.append('state', form.state);
+      fd.append('city', form.city);
+      fd.append('bio', form.bio || '');
+      fd.append('is_verified', form.is_verified ? '1' : '0');
       if (imageFile) fd.append('image', imageFile);
       if (editId) await client.post(`/anjumans/${editId}`, fd);
       else await client.post('/anjumans', fd);
@@ -51,7 +54,7 @@ export default function Anjumans() {
   };
 
   const handleEdit = (a) => {
-    setForm({ name: a.name, city: a.city, bio: a.bio || '', is_verified: !!a.is_verified, image_url: a.image_url || null });
+    setForm({ name: a.name, state: a.state || '', city: a.city, bio: a.bio || '', is_verified: !!a.is_verified, image_url: a.image_url || null });
     setEditId(a.id); setImageFile(null); setShowForm(true); setSaveError('');
     window.scrollTo(0, 0);
   };
@@ -86,6 +89,7 @@ export default function Anjumans() {
   const filtered = search
     ? anjumans.filter(a =>
         a.name?.toLowerCase().includes(q) ||
+        a.state?.toLowerCase().includes(q) ||
         a.city?.toLowerCase().includes(q)
       )
     : anjumans;
@@ -101,7 +105,7 @@ export default function Anjumans() {
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="Naam ya city se dhundhein..."
+            placeholder="Naam, state ya city se dhundhein..."
             width={210}
           />
           <button className="btn-primary" onClick={() => { resetForm(); setShowForm(p => !p); }}>
@@ -119,13 +123,17 @@ export default function Anjumans() {
           </div>
           <form onSubmit={handleSubmit}>
             <div className="form-grid-2">
-              <div>
+              <div style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Anjuman Ka Naam *</label>
                 <input className="form-input" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
               </div>
               <div>
+                <label className="form-label">State *</label>
+                <input className="form-input" placeholder="e.g. Bihar, Uttar Pradesh" value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value }))} required />
+              </div>
+              <div>
                 <label className="form-label">City *</label>
-                <input className="form-input" placeholder="e.g. Karachi, Lahore" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} required />
+                <input className="form-input" placeholder="e.g. Patna, Lucknow" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} required />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Bio (optional)</label>
@@ -197,8 +205,12 @@ export default function Anjumans() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
                   <span style={{ color: 'var(--white)', fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>{a.name}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                   <span style={{ color: 'var(--gold)', fontSize: 12 }}>📍 {a.city}</span>
+                  {a.state && <>
+                    <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>·</span>
+                    <span style={{ color: 'var(--grey)', fontSize: 11 }}>{a.state}</span>
+                  </>}
                   <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>·</span>
                   <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>{a.total_tracks} tracks</span>
                 </div>
@@ -229,6 +241,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
   const [showAnjumanForm, setShowAnjumanForm] = useState(false);
   const [anjumanForm, setAnjumanForm] = useState({
     name: anjuman.name,
+    state: anjuman.state || '',
     city: anjuman.city,
     bio: anjuman.bio || '',
     is_verified: !!anjuman.is_verified,
@@ -262,6 +275,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
   const resetAnjumanForm = () => {
     setAnjumanForm({
       name: anjumanInfo.name,
+      state: anjumanInfo.state || '',
       city: anjumanInfo.city,
       bio: anjumanInfo.bio || '',
       is_verified: !!anjumanInfo.is_verified,
@@ -279,6 +293,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
     try {
       const fd = new FormData();
       fd.append('name', anjumanForm.name);
+      fd.append('state', anjumanForm.state);
       fd.append('city', anjumanForm.city);
       fd.append('bio', anjumanForm.bio || '');
       fd.append('is_verified', anjumanForm.is_verified ? '1' : '0');
@@ -357,7 +372,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
             ← Anjumans
           </button>
           <h2 className="page-title">{anjumanInfo.name}</h2>
-          <p className="page-subtitle">📍 {anjumanInfo.city} · {tracks.length} tracks</p>
+          <p className="page-subtitle">📍 {anjumanInfo.city}{anjumanInfo.state ? `, ${anjumanInfo.state}` : ''} · {tracks.length} tracks</p>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
           <button
@@ -389,13 +404,17 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
           </div>
           <form onSubmit={handleAnjumanSubmit}>
             <div className="form-grid-2">
-              <div>
+              <div style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Anjuman Ka Naam *</label>
                 <input className="form-input" value={anjumanForm.name} onChange={e => setAnjumanForm(p => ({ ...p, name: e.target.value }))} required />
               </div>
               <div>
+                <label className="form-label">State *</label>
+                <input className="form-input" placeholder="e.g. Bihar, Uttar Pradesh" value={anjumanForm.state} onChange={e => setAnjumanForm(p => ({ ...p, state: e.target.value }))} required />
+              </div>
+              <div>
                 <label className="form-label">City *</label>
-                <input className="form-input" value={anjumanForm.city} onChange={e => setAnjumanForm(p => ({ ...p, city: e.target.value }))} required />
+                <input className="form-input" placeholder="e.g. Patna, Lucknow" value={anjumanForm.city} onChange={e => setAnjumanForm(p => ({ ...p, city: e.target.value }))} required />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Bio (optional)</label>
