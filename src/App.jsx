@@ -19,6 +19,7 @@ const Messages      = lazy(() => import('./pages/Messages'));
 const Popups        = lazy(() => import('./pages/Popups'));
 const OldNauhs      = lazy(() => import('./pages/OldNauhs'));
 const OldNauhakhwans = lazy(() => import('./pages/OldNauhakhwans'));
+const OldNauha      = lazy(() => import('./pages/OldNauha'));
 
 function PageLoader() {
   return (
@@ -169,6 +170,7 @@ export default function App() {
                 <Route path="/popups"         element={<Popups />} />
                 <Route path="/old-nauhs"      element={<OldNauhs />} />
                 <Route path="/old-nauhakhwans" element={<OldNauhakhwans />} />
+                <Route path="/old-nauha"      element={<OldNauha />} />
                 <Route path="*"              element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
