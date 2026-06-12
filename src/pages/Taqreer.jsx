@@ -190,16 +190,23 @@ export default function Taqreer() {
 function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
   const [ulemaInfo, setUlemaInfo] = useState(ulema);
   const [tracks, setTracks] = useState([]);
+  const [mauzus, setMauzus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showUlemaForm, setShowUlemaForm] = useState(false);
   const [ulemaForm, setUlemaForm] = useState({ name: ulema.name, bio: ulema.bio || '', image_url: ulema.image_url || null });
   const [ulemaImageFile, setUlemaImageFile] = useState(null);
   const [ulemaSaving, setUlemaSaving] = useState(false);
   const [ulemaSaveError, setUlemaSaveError] = useState('');
+  const [showMauzuForm, setShowMauzuForm] = useState(false);
+  const [mauzuEditId, setMauzuEditId] = useState(null);
+  const [mauzuTitle, setMauzuTitle] = useState('');
+  const [mauzuSaving, setMauzuSaving] = useState(false);
+  const [mauzuSaveError, setMauzuSaveError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [title, setTitle] = useState('');
   const [trackType, setTrackType] = useState('ashra_majlis');
+  const [mauzuId, setMauzuId] = useState('');
   const [dayNumber, setDayNumber] = useState('');
   const [audioFile, setAudioFile] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -210,19 +217,25 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
   const [playing, setPlaying] = useState(null);
   const [filterType, setFilterType] = useState('all');
 
-  useEffect(() => { fetchTracks(); }, [ulemaInfo.id]);
+  useEffect(() => { fetchAll(); }, [ulemaInfo.id]);
 
-  const fetchTracks = async () => {
+  const fetchAll = async () => {
     setLoading(true);
     try {
-      const { data } = await client.get(`/ulemas/${ulemaInfo.id}/tracks`);
-      setTracks(Array.isArray(data) ? data : []);
+      const [tracksRes, mauzusRes] = await Promise.all([
+        client.get(`/ulemas/${ulemaInfo.id}/tracks`),
+        client.get(`/ulemas/${ulemaInfo.id}/mauzus`),
+      ]);
+      setTracks(Array.isArray(tracksRes.data) ? tracksRes.data : []);
+      setMauzus(Array.isArray(mauzusRes.data) ? mauzusRes.data : []);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchTracks = fetchAll;
 
   const trackMatchesUpload = (track, uploadTitle, uploadDay) => {
     if (!track || track.title !== uploadTitle) return false;
@@ -257,10 +270,54 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
     }
   };
 
+  const resetMauzuForm = () => {
+    setMauzuEditId(null);
+    setMauzuTitle('');
+    setMauzuSaveError('');
+    setShowMauzuForm(false);
+  };
+
+  const handleMauzuSubmit = async (e) => {
+    e.preventDefault();
+    setMauzuSaving(true);
+    setMauzuSaveError('');
+    try {
+      const payload = { title: mauzuTitle };
+      if (mauzuEditId) await client.post(`/ulema-mauzus/${mauzuEditId}`, payload);
+      else await client.post(`/ulemas/${ulemaInfo.id}/mauzus`, payload);
+      resetMauzuForm();
+      await fetchAll();
+    } catch (err) {
+      setMauzuSaveError(formatApiError(err, 'Mauzu save nahi hua.'));
+    } finally {
+      setMauzuSaving(false);
+    }
+  };
+
+  const handleMauzuEdit = (m) => {
+    setMauzuEditId(m.id);
+    setMauzuTitle(m.title);
+    setShowMauzuForm(true);
+    setMauzuSaveError('');
+    window.scrollTo(0, 0);
+  };
+
+  const handleMauzuDelete = async (id) => {
+    if (!window.confirm('Mauzu delete karein? (Sirf tab jab andar koi majlis na ho)')) return;
+    try {
+      await client.delete(`/ulema-mauzus/${id}`);
+      if (mauzuId === String(id)) setMauzuId('');
+      fetchAll();
+    } catch (err) {
+      alert(formatApiError(err, 'Mauzu delete nahi hua.'));
+    }
+  };
+
   const resetTrackForm = () => {
     setEditId(null);
     setTitle('');
     setTrackType('ashra_majlis');
+    setMauzuId('');
     setDayNumber('');
     setAudioFile(null);
     setImageFile(null);
@@ -273,6 +330,10 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!editId && !audioFile) { setSaveError('Audio file required'); return; }
+    if (trackType === 'ashra_majlis' && !mauzuId) {
+      setSaveError('Majlis ke liye pehle mauzu select karein');
+      return;
+    }
     setSaving(true); setSaveError('');
     const uploadTitle = title;
     const uploadDay = dayNumber;
@@ -280,6 +341,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
       const fd = new FormData();
       fd.append('title', title);
       fd.append('type', trackType);
+      if (mauzuId && trackType === 'ashra_majlis') fd.append('mauzu_id', mauzuId);
       if (dayNumber && trackType === 'ashra_majlis') fd.append('day_number', dayNumber);
       if (audioFile) fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
@@ -307,6 +369,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
     setEditId(t.id);
     setTitle(t.title);
     setTrackType(t.type);
+    setMauzuId(t.mauzu_id ? String(t.mauzu_id) : '');
     setDayNumber(t.day_number ? String(t.day_number) : '');
     setAudioFile(null);
     setImageFile(null);
@@ -330,6 +393,51 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
 
   const visibleTracks = filterType === 'all' ? tracks : tracks.filter(t => t.type === filterType);
 
+  const groupedMajlis = () => {
+    const majlis = visibleTracks.filter(t => t.type === 'ashra_majlis');
+    const other = visibleTracks.filter(t => t.type !== 'ashra_majlis');
+    const groups = [];
+    const byMauzu = {};
+
+    majlis.forEach(t => {
+      const key = t.mauzu_id ? String(t.mauzu_id) : '_none';
+      if (!byMauzu[key]) byMauzu[key] = { title: t.mauzu_title || 'Bina Mauzu', tracks: [] };
+      byMauzu[key].tracks.push(t);
+    });
+
+    mauzus.forEach(m => {
+      const key = String(m.id);
+      if (byMauzu[key]) {
+        byMauzu[key].tracks.sort((a, b) => (a.day_number || 99) - (b.day_number || 99));
+        groups.push(byMauzu[key]);
+        delete byMauzu[key];
+      }
+    });
+
+    Object.values(byMauzu).forEach(g => {
+      g.tracks.sort((a, b) => (a.day_number || 99) - (b.day_number || 99));
+      groups.push(g);
+    });
+
+    return { groups, other };
+  };
+
+  const renderTrackRow = (t, i) => (
+    <tr key={t.id}>
+      <td style={{ color: 'var(--grey-dark)', fontWeight: 700 }}>{i + 1}</td>
+      <td style={{ fontSize: 12 }}>{typeLabel(t.type)}</td>
+      <td style={{ color: 'var(--white)', fontWeight: 600, fontSize: 13 }}>{t.title}</td>
+      <td style={{ fontSize: 12 }}>{t.mauzu_title || '—'}</td>
+      <td style={{ fontSize: 12 }}>{t.day_number ? `Din ${t.day_number}` : '—'}</td>
+      <td style={{ fontSize: 12 }}>{t.duration || '—'}</td>
+      <td><button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>{playing === t.audio_url ? '■ Stop' : '▶ Play'}</button></td>
+      <td><div style={{ display: 'flex', gap: 6 }}><button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button><button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button></div></td>
+    </tr>
+  );
+
+  const showGroupedMajlis = filterType === 'ashra_majlis' || filterType === 'all';
+  const { groups: majlisGroups, other: nonMajlisTracks } = groupedMajlis();
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
@@ -343,7 +451,11 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
             if (showUlemaForm) resetUlemaForm();
             else { setShowForm(false); resetTrackForm(); setShowUlemaForm(true); }
           }}>{showUlemaForm ? '✕ Cancel Edit' : '✏️ Ulema Edit'}</button>
-          <button type="button" className="btn-primary" onClick={() => { if (showForm) resetTrackForm(); else { setShowUlemaForm(false); setShowForm(true); } }}>
+          <button type="button" className="btn-cancel" style={{ padding: '10px 16px' }} onClick={() => {
+            if (showMauzuForm) resetMauzuForm();
+            else { setShowForm(false); resetTrackForm(); setShowMauzuForm(true); }
+          }}>{showMauzuForm ? '✕ Cancel Mauzu' : '+ Mauzu Add'}</button>
+          <button type="button" className="btn-primary" onClick={() => { if (showForm) resetTrackForm(); else { setShowUlemaForm(false); setShowMauzuForm(false); setShowForm(true); } }}>
             {showForm ? '✕ Cancel' : '+ Audio Upload'}
           </button>
         </div>
@@ -360,6 +472,43 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
           );
         })}
       </div>
+
+      {showMauzuForm && (
+        <div className="form-card" style={{ marginBottom: 24 }}>
+          <div className="section-title-row" style={{ marginBottom: 20 }}><div className="accent-bar" /><h3 className="section-title">{mauzuEditId ? 'Mauzu Edit' : 'Naya Mauzu (Topic/Agenda)'}</h3></div>
+          <form onSubmit={handleMauzuSubmit}>
+            <div className="form-grid-2">
+              <div style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">Mauzu Ka Naam *</label>
+                <input className="form-input" value={mauzuTitle} onChange={e => setMauzuTitle(e.target.value)} placeholder="Maslan: Hussaini Zindagi ki Mansooba Bandi" required />
+                <p style={{ color: 'var(--grey-dark)', fontSize: 11, marginTop: 6 }}>Is mauzu ke andar 10 din ki majlis add karein (Din 1 se Din 10)</p>
+              </div>
+            </div>
+            {mauzuSaveError && <div className="err-banner" style={{ marginTop: 16 }}>{mauzuSaveError}</div>}
+            <div className="form-actions"><button type="button" className="btn-cancel" onClick={resetMauzuForm}>Cancel</button><button type="submit" className="btn-save" disabled={mauzuSaving}>{mauzuSaving ? 'Saving...' : mauzuEditId ? 'Update' : 'Mauzu Add'}</button></div>
+          </form>
+        </div>
+      )}
+
+      {!showMauzuForm && mauzus.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div className="section-title-row" style={{ marginBottom: 12 }}><div className="accent-bar" /><h3 className="section-title">Mauzu List ({mauzus.length})</h3></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {mauzus.map(m => (
+              <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', background: 'var(--bg-card)', border: '1px solid var(--divider)', borderRadius: 10 }}>
+                <div>
+                  <div style={{ color: 'var(--white)', fontWeight: 700, fontSize: 13 }}>{m.title}</div>
+                  <div style={{ color: 'var(--grey-dark)', fontSize: 11, marginTop: 4 }}>{m.tracks_count ?? tracks.filter(t => String(t.mauzu_id) === String(m.id)).length} majlis</div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="tbl-btn tbl-btn-edit" onClick={() => handleMauzuEdit(m)}>Edit</button>
+                  <button className="tbl-btn tbl-btn-delete" onClick={() => handleMauzuDelete(m.id)}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showUlemaForm && (
         <div className="form-card" style={{ marginBottom: 24 }}>
@@ -390,12 +539,21 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
               </div>
               <div><label className="form-label">Title *</label><input className="form-input" value={title} onChange={e => setTitle(e.target.value)} required /></div>
               {trackType === 'ashra_majlis' && (
-                <div><label className="form-label">Ashra Ka Din (optional)</label>
-                  <select className="form-input" value={dayNumber} onChange={e => setDayNumber(e.target.value)}>
-                    <option value="">Select...</option>
-                    {ASHRA_DAYS.map(d => <option key={d} value={d}>Din {d}</option>)}
-                  </select>
-                </div>
+                <>
+                  <div><label className="form-label">Mauzu *</label>
+                    <select className="form-input" value={mauzuId} onChange={e => setMauzuId(e.target.value)} required>
+                      <option value="">Mauzu select karein...</option>
+                      {mauzus.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+                    </select>
+                    {mauzus.length === 0 && <p style={{ color: 'var(--gold)', fontSize: 11, marginTop: 6 }}>Pehle oopar se mauzu add karein</p>}
+                  </div>
+                  <div><label className="form-label">Ashra Ka Din (optional)</label>
+                    <select className="form-input" value={dayNumber} onChange={e => setDayNumber(e.target.value)}>
+                      <option value="">Select...</option>
+                      {ASHRA_DAYS.map(d => <option key={d} value={d}>Din {d}</option>)}
+                    </select>
+                  </div>
+                </>
               )}
               <div><label className="form-label">Audio {editId ? '(optional)' : '*'}</label>
                 <input type="file" accept="audio/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }} onChange={e => { const f = e.target.files[0]; setAudioFile(f); if (audioPreview?.startsWith('blob:')) URL.revokeObjectURL(audioPreview); setAudioPreview(f ? URL.createObjectURL(f) : null); }} required={!editId} />
@@ -422,22 +580,40 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
 
       {loading ? <TableSkeleton /> : visibleTracks.length === 0 ? (
         <EmptyState text="Koi audio nahi. Oopar se upload karein." />
+      ) : showGroupedMajlis && majlisGroups.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {majlisGroups.map((group, gi) => (
+            <div key={`${group.title}-${gi}`}>
+              <div style={{ marginBottom: 10, padding: '10px 14px', background: 'linear-gradient(135deg, rgba(212,168,67,.12), rgba(212,168,67,.04))', border: '1px solid rgba(212,168,67,.2)', borderRadius: 10 }}>
+                <span style={{ color: 'var(--gold)', fontWeight: 800, fontSize: 14 }}>{group.title}</span>
+                <span style={{ color: 'var(--grey-dark)', fontSize: 11, marginLeft: 10 }}>{group.tracks.length} majlis</span>
+              </div>
+              <div className="data-table-wrap">
+                <table className="data-table">
+                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                  <tbody>{group.tracks.map((t, i) => renderTrackRow(t, i))}</tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+          {filterType === 'all' && nonMajlisTracks.length > 0 && (
+            <div>
+              <div style={{ marginBottom: 10, color: 'var(--grey)', fontWeight: 700, fontSize: 13 }}>Baqi Audio</div>
+              <div className="data-table-wrap">
+                <table className="data-table">
+                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                  <tbody>{nonMajlisTracks.map((t, i) => renderTrackRow(t, i))}</tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="data-table-wrap">
           <table className="data-table">
-            <thead><tr>{['#', 'Type', 'Title', 'Din', 'Duration', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+            <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
             <tbody>
-              {visibleTracks.map((t, i) => (
-                <tr key={t.id}>
-                  <td style={{ color: 'var(--grey-dark)', fontWeight: 700 }}>{i + 1}</td>
-                  <td style={{ fontSize: 12 }}>{typeLabel(t.type)}</td>
-                  <td style={{ color: 'var(--white)', fontWeight: 600, fontSize: 13 }}>{t.title}</td>
-                  <td style={{ fontSize: 12 }}>{t.day_number ? `Din ${t.day_number}` : '—'}</td>
-                  <td style={{ fontSize: 12 }}>{t.duration || '—'}</td>
-                  <td><button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>{playing === t.audio_url ? '■ Stop' : '▶ Play'}</button></td>
-                  <td><div style={{ display: 'flex', gap: 6 }}><button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button><button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button></div></td>
-                </tr>
-              ))}
+              {visibleTracks.map((t, i) => renderTrackRow(t, i))}
             </tbody>
           </table>
         </div>
