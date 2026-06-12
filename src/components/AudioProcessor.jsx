@@ -420,13 +420,14 @@ export default function AudioProcessor({ file, onProcessed }) {
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
+  const [used, setUsed] = useState(false);
   const [error, setError] = useState('');
   const resultUrlRef = useRef(null);
 
   useEffect(() => () => { if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current); }, []);
 
   useEffect(() => {
-    setResult(null); setError(''); setOpen(false);
+    setResult(null); setError(''); setOpen(false); setUsed(false);
     setAudioBuf(null); setStartR(0); setEndR(1);
   }, [file]);
 
@@ -599,15 +600,26 @@ export default function AudioProcessor({ file, onProcessed }) {
                 </span>
               </div>
               <audio controls src={result.url} style={{ width: '100%', height: 36, accentColor: 'var(--gold)', marginBottom: 10 }} />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" onClick={() => onProcessed(result.file, result.url)}
-                  style={{ padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: 'rgba(16,185,129,.12)', color: '#10B981', border: '1px solid rgba(16,185,129,.3)', cursor: 'pointer' }}>
-                  ✓ Yeh file use karein
-                </button>
-                <button type="button" onClick={handleProcess}
-                  style={{ padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: 'var(--bg-surface)', color: 'var(--grey)', border: '1px solid var(--divider)', cursor: 'pointer' }}>
-                  Dobara
-                </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {used ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: 'rgba(16,185,129,.18)', color: '#10B981', border: '1px solid rgba(16,185,129,.4)' }}>
+                    ✓ Yeh file selected hai — upload mein use hogi
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { onProcessed(result.file, result.url); setUsed(true); }}
+                    style={{ padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: 'rgba(16,185,129,.12)', color: '#10B981', border: '1px solid rgba(16,185,129,.3)', cursor: 'pointer' }}
+                  >
+                    ✓ Yeh file use karein
+                  </button>
+                )}
+                {!used && (
+                  <button type="button" onClick={handleProcess}
+                    style={{ padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: 'var(--bg-surface)', color: 'var(--grey)', border: '1px solid var(--divider)', cursor: 'pointer' }}>
+                    Dobara
+                  </button>
+                )}
               </div>
             </div>
           ) : (

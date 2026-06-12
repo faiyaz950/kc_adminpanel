@@ -190,6 +190,11 @@ export default function OldNauhs() {
               <audio controls src={audioPreviewUrl}
                 style={{ width: '100%', marginTop: 10, height: 36, accentColor: 'var(--gold)' }} />
             )}
+            {audioFile && finalAudio && finalAudio !== audioFile && (
+              <div style={{ marginTop: 8, padding: '6px 12px', borderRadius: 8, background: 'rgba(16,185,129,.1)', border: '1px solid rgba(16,185,129,.3)', color: '#10B981', fontSize: 11, fontWeight: 600 }}>
+                ✓ Processed audio use ho rahi hai upload mein
+              </div>
+            )}
             {/* AudioProcessor — compress / trim tools */}
             {audioFile && (
               <AudioProcessor
