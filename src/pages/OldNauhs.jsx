@@ -22,6 +22,7 @@ export default function OldNauhs() {
 
   // form
   const [title, setTitle]           = useState('');
+  const [nauhakhwanName, setNauhakhwanName] = useState('');
   const [country, setCountry]       = useState('India');
   const [audioFile, setAudioFile]   = useState(null);   // raw file from input
   const [finalAudio, setFinalAudio] = useState(null);   // after AudioProcessor (may be processed)
@@ -65,7 +66,7 @@ export default function OldNauhs() {
   }
 
   function resetForm() {
-    setTitle(''); setCountry('India');
+    setTitle(''); setNauhakhwanName(''); setCountry('India');
     setAudioFile(null); setFinalAudio(null); setImageFile(null);
     setSaveError('');
     if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
@@ -84,6 +85,7 @@ export default function OldNauhs() {
     try {
       const fd = new FormData();
       fd.append('title',   title.trim());
+      if (nauhakhwanName.trim()) fd.append('nauhakhwan_name', nauhakhwanName.trim());
       fd.append('country', country);
       fd.append('audio',   finalAudio, finalAudio.name || 'audio.mp3');
       if (imageFile) fd.append('image', imageFile);
@@ -152,6 +154,17 @@ export default function OldNauhs() {
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="Nauh ka title..."
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Nauhakhwan Name */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={labelStyle}>Nauhakhwan Name</label>
+            <input
+              value={nauhakhwanName}
+              onChange={e => setNauhakhwanName(e.target.value)}
+              placeholder="Maslan: Mir Hasan Mir, Nadeem Sarwar..."
               style={inputStyle}
             />
           </div>
@@ -282,6 +295,11 @@ export default function OldNauhs() {
                   <div style={{ color: 'var(--white)', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {track.title}
                   </div>
+                  {track.nauhakhwan_name && (
+                    <div style={{ color: 'var(--grey-light)', fontSize: 11, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {track.nauhakhwan_name}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, color: cs.color, background: cs.bg, border: `1px solid ${cs.border}` }}>
                       {track.country}
