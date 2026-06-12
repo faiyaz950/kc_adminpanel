@@ -12,25 +12,28 @@ const COUNTRY_STYLE = {
 };
 
 export default function OldNauhs() {
-  const [tracks, setTracks]       = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState('');
-  const [showForm, setShowForm]   = useState(false);
-  const [saving, setSaving]       = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [deleteId, setDeleteId]   = useState(null);
+  const [tracks, setTracks]         = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+  const [showForm, setShowForm]     = useState(false);
+  const [saving, setSaving]         = useState(false);
+  const [saveError, setSaveError]   = useState('');
+  const [deleteId, setDeleteId]     = useState(null);
 
-  // form state
-  const [title, setTitle]         = useState('');
-  const [country, setCountry]     = useState('India');
-  const [imageFile, setImageFile] = useState(null);
+  // form
+  const [title, setTitle]           = useState('');
+  const [country, setCountry]       = useState('India');
+  const [audioFile, setAudioFile]   = useState(null);   // raw file from input
+  const [finalAudio, setFinalAudio] = useState(null);   // after AudioProcessor (may be processed)
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState(null);
+  const [imageFile, setImageFile]   = useState(null);
   const imageRef = useRef();
-
-  // audio processor
-  const [audioKey, setAudioKey]   = useState(0);
-  const audioResultRef            = useRef(null);
+  const audioRef = useRef();
 
   useEffect(() => { fetchTracks(); }, []);
+
+  // cleanup blob URLs
+  useEffect(() => () => { if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl); }, [audioPreviewUrl]);
 
   async function fetchTracks() {
     setLoading(true); setError('');
@@ -44,28 +47,46 @@ export default function OldNauhs() {
     }
   }
 
+  function handleAudioPick(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    setAudioFile(f);
+    setFinalAudio(f);           // default: use original
+    setSaveError('');
+    // preview URL
+    if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
+    setAudioPreviewUrl(URL.createObjectURL(f));
+  }
+
+  function handleProcessed(processedFile, processedUrl) {
+    setFinalAudio(processedFile);
+    if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
+    setAudioPreviewUrl(processedUrl);
+  }
+
   function resetForm() {
     setTitle(''); setCountry('India');
-    setImageFile(null); setSaveError('');
-    setAudioKey(k => k + 1);
-    audioResultRef.current = null;
+    setAudioFile(null); setFinalAudio(null); setImageFile(null);
+    setSaveError('');
+    if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
+    setAudioPreviewUrl(null);
+    if (audioRef.current) audioRef.current.value = '';
+    if (imageRef.current) imageRef.current.value = '';
     setShowForm(false);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!title.trim())              return setSaveError('Title required hai.');
-    if (!audioResultRef.current)    return setSaveError('Audio file select karein.');
-    if (!audioResultRef.current.blob) return setSaveError('Audio process ho raha hai, zaraa wait karein.');
+    if (!title.trim())   return setSaveError('Title required hai.');
+    if (!finalAudio)     return setSaveError('Audio file select karein.');
 
     setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
       fd.append('title',   title.trim());
       fd.append('country', country);
-      fd.append('audio',   audioResultRef.current.blob, audioResultRef.current.filename || 'audio.mp3');
+      fd.append('audio',   finalAudio, finalAudio.name || 'audio.mp3');
       if (imageFile) fd.append('image', imageFile);
-
       await client.post('/old-nauhs', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       resetForm();
       fetchTracks();
@@ -92,10 +113,10 @@ export default function OldNauhs() {
   return (
     <div style={{ padding: '28px 24px', maxWidth: 900, margin: '0 auto' }}>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 3, height: 36, borderRadius: 2, background: 'linear-gradient(180deg, #EF4444, rgba(239,68,68,.3))' }} />
+          <div style={{ width: 3, height: 36, borderRadius: 2, background: 'linear-gradient(180deg,#EF4444,rgba(239,68,68,.3))' }} />
           <div>
             <h1 style={{ margin: 0, color: 'var(--white)', fontSize: 22, fontWeight: 800, letterSpacing: '-0.3px' }}>Old's Nauhe</h1>
             <p style={{ margin: '3px 0 0', color: 'var(--grey-dark)', fontSize: 12 }}>{tracks.length} tracks</p>
@@ -106,9 +127,10 @@ export default function OldNauhs() {
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '10px 18px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-            background: showForm ? 'var(--bg-surface)' : 'linear-gradient(135deg, #EF4444, #DC2626)',
+            background: showForm ? 'var(--bg-surface)' : 'linear-gradient(135deg,#EF4444,#DC2626)',
             color: 'var(--white)',
             boxShadow: showForm ? 'none' : '0 4px 16px rgba(239,68,68,.3)',
+            outline: showForm ? '1px solid var(--divider)' : 'none',
           }}
         >
           <span style={{ fontSize: 16, lineHeight: 1 }}>{showForm ? '✕' : '+'}</span>
@@ -118,7 +140,7 @@ export default function OldNauhs() {
 
       <ErrorBanner message={error} />
 
-      {/* Add Form */}
+      {/* ── Add Form ── */}
       {showForm && (
         <form onSubmit={handleSubmit} style={{ background: 'var(--bg-card)', border: '1px solid var(--divider)', borderRadius: 16, padding: 24, marginBottom: 28 }}>
           <h3 style={{ margin: '0 0 20px', color: 'var(--white)', fontSize: 15, fontWeight: 700 }}>Naya Old Nauh Add Karein</h3>
@@ -127,7 +149,8 @@ export default function OldNauhs() {
           <div style={{ marginBottom: 16 }}>
             <label style={labelStyle}>Title *</label>
             <input
-              value={title} onChange={e => setTitle(e.target.value)}
+              value={title}
+              onChange={e => setTitle(e.target.value)}
               placeholder="Nauh ka title..."
               style={inputStyle}
             />
@@ -138,30 +161,42 @@ export default function OldNauhs() {
             <label style={labelStyle}>Country *</label>
             <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
               {COUNTRIES.map(c => (
-                <button
-                  key={c} type="button"
-                  onClick={() => setCountry(c)}
+                <button key={c} type="button" onClick={() => setCountry(c)}
                   style={{
                     padding: '8px 20px', borderRadius: 20, cursor: 'pointer', fontSize: 13, fontWeight: 700,
                     border: country === c ? 'none' : '1px solid var(--divider)',
-                    background: country === c ? 'linear-gradient(135deg, #EF4444, #DC2626)' : 'var(--bg-surface)',
-                    color: 'var(--white)',
-                    transition: 'all .15s',
+                    background: country === c ? 'linear-gradient(135deg,#EF4444,#DC2626)' : 'var(--bg-surface)',
+                    color: 'var(--white)', transition: 'all .15s',
                   }}
-                >
-                  {c}
-                </button>
+                >{c}</button>
               ))}
             </div>
           </div>
 
-          {/* Audio */}
+          {/* Audio File */}
           <div style={{ marginBottom: 16 }}>
-            <label style={labelStyle}>Audio File *</label>
-            <AudioProcessor
-              key={audioKey}
-              onResult={result => { audioResultRef.current = result; }}
+            <label style={labelStyle}>MP3 / Audio File *</label>
+            <p style={{ fontSize: 11, color: 'var(--grey-dark)', margin: '0 0 8px' }}>
+              Duration MP3 se automatically detect hogi — manually set karne ki zaroorat nahi.
+            </p>
+            <input
+              ref={audioRef}
+              type="file"
+              accept="audio/*,.mp3,.aac,.m4a,.wav,.ogg"
+              onChange={handleAudioPick}
+              style={{ color: 'var(--grey-light)', fontSize: 13 }}
             />
+            {audioFile && audioPreviewUrl && (
+              <audio controls src={audioPreviewUrl}
+                style={{ width: '100%', marginTop: 10, height: 36, accentColor: 'var(--gold)' }} />
+            )}
+            {/* AudioProcessor — compress / trim tools */}
+            {audioFile && (
+              <AudioProcessor
+                file={audioFile}
+                onProcessed={handleProcessed}
+              />
+            )}
           </div>
 
           {/* Cover Image */}
@@ -183,13 +218,18 @@ export default function OldNauhs() {
               onChange={e => setImageFile(e.target.files[0] || null)} />
           </div>
 
-          {saveError && <p style={{ color: '#F87171', fontSize: 12, marginBottom: 12 }}>{saveError}</p>}
+          {saveError && (
+            <p style={{ color: '#F87171', fontSize: 12, marginBottom: 12, padding: '8px 12px', background: 'rgba(239,68,68,.08)', borderRadius: 8 }}>
+              {saveError}
+            </p>
+          )}
 
           <button
             type="submit" disabled={saving}
             style={{
-              width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
-              background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+              width: '100%', padding: 13, borderRadius: 12, border: 'none',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              background: 'linear-gradient(135deg,#EF4444,#DC2626)',
               color: '#fff', fontSize: 14, fontWeight: 700,
               opacity: saving ? 0.7 : 1,
               boxShadow: '0 4px 16px rgba(239,68,68,.3)',
@@ -200,7 +240,7 @@ export default function OldNauhs() {
         </form>
       )}
 
-      {/* Tracks List */}
+      {/* ── Track List ── */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[1,2,3,4,5].map(i => (
