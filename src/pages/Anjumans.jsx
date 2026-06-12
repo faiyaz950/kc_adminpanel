@@ -254,6 +254,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
   const [editId, setEditId] = useState(null);
   const [title, setTitle] = useState('');
   const [occasion, setOccasion] = useState('');
+  const [lyrics, setLyrics] = useState('');
   const [audioFile, setAudioFile] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -313,6 +314,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
     setEditId(null);
     setTitle('');
     setOccasion('');
+    setLyrics('');
     setAudioFile(null);
     setImageFile(null);
     setAudioPreview(null);
@@ -329,6 +331,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
       const fd = new FormData();
       fd.append('title', title);
       fd.append('occasion', occasion);
+      fd.append('lyrics', lyrics);
       if (audioFile) fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
       if (editId) await client.post(`/anjuman-tracks/${editId}`, fd);
@@ -344,6 +347,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
     setEditId(t.id);
     setTitle(t.title);
     setOccasion(t.occasion || '');
+    setLyrics(t.lyrics || '');
     setAudioFile(null);
     setImageFile(null);
     setAudioPreview(t.audio_url || null);
@@ -372,7 +376,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
             ← Anjumans
           </button>
           <h2 className="page-title">{anjumanInfo.name}</h2>
-          <p className="page-subtitle">📍 {anjumanInfo.city}{anjumanInfo.state ? `, ${anjumanInfo.state}` : ''} · {tracks.length} tracks</p>
+          <p className="page-subtitle">📍 {anjumanInfo.city}{anjumanInfo.state ? `, ${anjumanInfo.state}` : ''} · {tracks.length} tracks · {tracks.filter(t => t.lyrics?.trim()).length} with lyrics</p>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
           <button
@@ -510,6 +514,20 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
                   />
                 )}
               </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">Lyrics (optional)</label>
+                <p style={{ fontSize: 11, color: 'var(--grey-dark)', margin: '0 0 8px' }}>
+                  App ke player mein lyrics ke taur par dikhegi. Har line alag line par likhein.
+                </p>
+                <textarea
+                  className="form-input"
+                  value={lyrics}
+                  onChange={e => setLyrics(e.target.value)}
+                  placeholder="Yahan nauh ki lyrics likhein..."
+                  rows={6}
+                  style={{ resize: 'vertical', minHeight: 120, lineHeight: 1.6 }}
+                />
+              </div>
             </div>
             {saveError && <div className="err-banner" style={{ marginTop: 16 }}>{saveError}</div>}
             {saving && <p style={{ color: 'var(--emerald-light)', fontSize: 13, marginTop: 12 }}>⬆ Uploading to Cloudinary... please wait</p>}
@@ -548,6 +566,11 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
                           </div>
                       }
                       <span style={{ color: 'var(--white)', fontWeight: 600, fontSize: 13 }}>{t.title}</span>
+                      {t.lyrics?.trim() && (
+                        <span style={{ background: 'rgba(212,168,67,.12)', color: 'var(--gold)', padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>
+                          Lyrics
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td style={{ fontSize: 12 }}>{t.occasion || '—'}</td>
