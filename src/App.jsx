@@ -11,6 +11,7 @@ import Taqreer from './pages/Taqreer';
 import Users from './pages/Users';
 import Messages from './pages/Messages';
 import Popups from './pages/Popups';
+import OldNauhs from './pages/OldNauhs';
 import Sidebar from './components/Sidebar';
 import ErrorBoundary from './components/ErrorBoundary';
 import { prefetchTracksBootstrap } from './api/prefetch';
@@ -144,6 +145,7 @@ export default function App() {
               <Route path="/users" element={<Users />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/popups" element={<Popups />} />
+              <Route path="/old-nauhs" element={<OldNauhs />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ErrorBoundary>
