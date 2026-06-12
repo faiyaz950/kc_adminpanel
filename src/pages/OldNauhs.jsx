@@ -27,6 +27,7 @@ export default function OldNauhs() {
   const [title, setTitle]           = useState('');
   const [oldNauhakhwanId, setOldNauhakhwanId] = useState('');
   const [country, setCountry]       = useState('India');
+  const [lyrics, setLyrics]         = useState('');
   const [audioFile, setAudioFile]   = useState(null);
   const [finalAudio, setFinalAudio] = useState(null);
   const [audioPreviewUrl, setAudioPreviewUrl] = useState(null);
@@ -89,6 +90,7 @@ export default function OldNauhs() {
     setTitle('');
     setOldNauhakhwanId('');
     setCountry('India');
+    setLyrics('');
     setAudioFile(null);
     setFinalAudio(null);
     setImageFile(null);
@@ -132,6 +134,7 @@ export default function OldNauhs() {
     }
     setOldNauhakhwanId(khwanId);
     setCountry(track.country || 'India');
+    setLyrics(track.lyrics || '');
     setExistingAudioUrl(track.audio_url || null);
     setExistingImageUrl(track.image_url || null);
     setSaveError('');
@@ -155,6 +158,7 @@ export default function OldNauhs() {
       fd.append('title', title.trim());
       fd.append('old_nauhakhwan_id', oldNauhakhwanId);
       fd.append('country', country);
+      fd.append('lyrics', lyrics);
       if (finalAudio) fd.append('audio', finalAudio, finalAudio.name || 'audio.mp3');
       if (imageFile) fd.append('image', imageFile);
 
@@ -203,7 +207,9 @@ export default function OldNauhs() {
           <div style={{ width: 3, height: 36, borderRadius: 2, background: 'linear-gradient(180deg,#EF4444,rgba(239,68,68,.3))' }} />
           <div>
             <h1 style={{ margin: 0, color: 'var(--white)', fontSize: 22, fontWeight: 800, letterSpacing: '-0.3px' }}>Old's Nauhe</h1>
-            <p style={{ margin: '3px 0 0', color: 'var(--grey-dark)', fontSize: 12 }}>{tracks.length} tracks</p>
+            <p style={{ margin: '3px 0 0', color: 'var(--grey-dark)', fontSize: 12 }}>
+              {tracks.length} tracks · {tracks.filter(t => t.lyrics?.trim()).length} with lyrics
+            </p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -379,6 +385,27 @@ export default function OldNauhs() {
               }} />
           </div>
 
+          {/* Lyrics */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={labelStyle}>Lyrics (optional)</label>
+            <p style={{ fontSize: 11, color: 'var(--grey-dark)', margin: '0 0 8px' }}>
+              App ke player mein lyrics ke taur par dikhegi. Har line alag line par likhein.
+            </p>
+            <textarea
+              value={lyrics}
+              onChange={e => setLyrics(e.target.value)}
+              placeholder="Yahan nauh ki lyrics likhein..."
+              rows={6}
+              style={{
+                ...inputStyle,
+                resize: 'vertical',
+                minHeight: 120,
+                lineHeight: 1.6,
+                fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
           {saveError && (
             <p style={{ color: '#F87171', fontSize: 12, marginBottom: 12, padding: '8px 12px', background: 'rgba(239,68,68,.08)', borderRadius: 8 }}>
               {saveError}
@@ -466,6 +493,15 @@ export default function OldNauhs() {
                     </span>
                     {track.duration && (
                       <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>{track.duration}</span>
+                    )}
+                    {track.lyrics?.trim() && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                        color: 'var(--emerald-light)', background: 'rgba(34,197,94,.12)',
+                        border: '1px solid rgba(34,197,94,.25)',
+                      }}>
+                        Lyrics
+                      </span>
                     )}
                   </div>
                 </div>
