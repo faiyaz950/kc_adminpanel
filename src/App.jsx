@@ -1,21 +1,41 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Tracks from './pages/Tracks';
-import FeaturedAlbums from './pages/FeaturedAlbums';
-import Reciters from './pages/Reciters';
-import Anjumans from './pages/Anjumans';
-import AshraMajlis from './pages/AshraMajlis';
-import Taqreer from './pages/Taqreer';
-import Users from './pages/Users';
-import Messages from './pages/Messages';
-import Popups from './pages/Popups';
-import OldNauhs from './pages/OldNauhs';
 import Sidebar from './components/Sidebar';
 import ErrorBoundary from './components/ErrorBoundary';
 import { prefetchTracksBootstrap } from './api/prefetch';
 import { purgeBadCache } from './api/listCache';
+
+// Lazy-load all heavy pages for faster initial load
+const Dashboard     = lazy(() => import('./pages/Dashboard'));
+const Tracks        = lazy(() => import('./pages/Tracks'));
+const FeaturedAlbums= lazy(() => import('./pages/FeaturedAlbums'));
+const Reciters      = lazy(() => import('./pages/Reciters'));
+const Anjumans      = lazy(() => import('./pages/Anjumans'));
+const AshraMajlis   = lazy(() => import('./pages/AshraMajlis'));
+const Taqreer       = lazy(() => import('./pages/Taqreer'));
+const Users         = lazy(() => import('./pages/Users'));
+const Messages      = lazy(() => import('./pages/Messages'));
+const Popups        = lazy(() => import('./pages/Popups'));
+const OldNauhs      = lazy(() => import('./pages/OldNauhs'));
+
+function PageLoader() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '60vh', flexDirection: 'column', gap: 14,
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: '50%',
+        border: '3px solid var(--emerald)',
+        borderTopColor: 'transparent',
+        animation: 'kspin .7s linear infinite',
+      }} />
+      <span style={{ color: 'var(--grey)', fontSize: 12 }}>Loading...</span>
+      <style>{`@keyframes kspin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
 
 function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,7 +63,7 @@ function Layout({ children }) {
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
       }}>
-        {/* Mobile topbar — shown via CSS */}
+        {/* Mobile topbar */}
         <div id="mobile-topbar" style={{
           display: 'none',
           alignItems: 'center',
@@ -134,20 +154,22 @@ export default function App() {
       ) : (
         <Layout>
           <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/tracks" element={<Tracks />} />
-              <Route path="/featured-albums" element={<FeaturedAlbums />} />
-              <Route path="/reciters" element={<Reciters />} />
-              <Route path="/anjumans" element={<Anjumans />} />
-              <Route path="/ashra-majlis" element={<AshraMajlis />} />
-              <Route path="/taqreer" element={<Taqreer />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/popups" element={<Popups />} />
-              <Route path="/old-nauhs" element={<OldNauhs />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/"               element={<Dashboard />} />
+                <Route path="/tracks"         element={<Tracks />} />
+                <Route path="/featured-albums"element={<FeaturedAlbums />} />
+                <Route path="/reciters"       element={<Reciters />} />
+                <Route path="/anjumans"       element={<Anjumans />} />
+                <Route path="/ashra-majlis"   element={<AshraMajlis />} />
+                <Route path="/taqreer"        element={<Taqreer />} />
+                <Route path="/users"          element={<Users />} />
+                <Route path="/messages"       element={<Messages />} />
+                <Route path="/popups"         element={<Popups />} />
+                <Route path="/old-nauhs"      element={<OldNauhs />} />
+                <Route path="*"              element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
           </ErrorBoundary>
         </Layout>
       )}
