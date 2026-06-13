@@ -157,25 +157,20 @@ export default function AnjumanSubmissions() {
           <h4 style={{ margin: '0 0 16px', color: 'var(--white)' }}>
             Tracks ({s.tracks?.length || 0})
           </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {(s.tracks || []).map((t, i) => (
-              <div key={t.id || i} style={{
-                display: 'flex', alignItems: 'center', gap: 14, padding: 12,
-                background: 'var(--bg-surface)', borderRadius: 12, border: '1px solid var(--divider)',
-              }}>
-                {t.image_url ? (
-                  <img src={t.image_url} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: 48, height: 48, borderRadius: 8, background: 'var(--divider)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--grey)' }}>♪</div>
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: 'var(--white)', fontWeight: 600, fontSize: 14 }}>{t.title}</div>
-                  <div style={{ color: 'var(--grey)', fontSize: 12 }}>{t.duration || '—'}</div>
-                </div>
-                {t.audio_url && (
-                  <audio controls src={t.audio_url} style={{ maxWidth: 220, height: 36 }} />
-                )}
-              </div>
+              <SubmissionTrackRow
+                key={t.id || i}
+                track={t}
+                submissionId={s.id}
+                editable={s.status === 'pending'}
+                onUpdated={(updated) => {
+                  setSelected(prev => ({
+                    ...prev,
+                    tracks: prev.tracks.map(tr => (tr.id === updated.id ? updated : tr)),
+                  }));
+                }}
+              />
             ))}
           </div>
         </div>
@@ -302,6 +297,125 @@ function DetailRow({ label, value }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--divider)' }}>
       <span style={{ color: 'var(--grey)', fontSize: 13 }}>{label}</span>
       <span style={{ color: 'var(--white)', fontSize: 13, fontWeight: 600 }}>{value || '—'}</span>
+    </div>
+  );
+}
+
+function SubmissionTrackRow({ track, submissionId, editable, onUpdated }) {
+  const [link, setLink] = useState(track.audio_url || '');
+  const [title, setTitle] = useState(track.title || '');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const isYouTube = /youtube\.com|youtu\.be/i.test(link);
+
+  useEffect(() => {
+    setLink(track.audio_url || '');
+    setTitle(track.title || '');
+    setSaveError('');
+    setSaveSuccess(false);
+  }, [track.audio_url, track.title, track.id]);
+
+  const saveLink = async () => {
+    setSaving(true);
+    setSaveError('');
+    setSaveSuccess(false);
+    try {
+      const res = await client.post(
+        `/anjuman-submissions/${submissionId}/tracks/${track.id}`,
+        { audio_url: link.trim(), title: title.trim() },
+      );
+      onUpdated(res.data);
+      setSaveSuccess(true);
+    } catch (err) {
+      setSaveError(formatApiError(err, 'Link save nahi hui.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{
+      padding: 14,
+      background: 'var(--bg-surface)',
+      borderRadius: 12,
+      border: '1px solid var(--divider)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
+        {track.image_url ? (
+          <img src={track.image_url} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+        ) : (
+          <div style={{
+            width: 48, height: 48, borderRadius: 8, background: 'var(--divider)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--grey)', flexShrink: 0,
+          }}>♪</div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: 'var(--white)', fontWeight: 600, fontSize: 14 }}>{track.title}</div>
+          <div style={{ color: 'var(--grey)', fontSize: 12 }}>
+            {isYouTube ? 'YouTube link' : 'Audio link'}
+          </div>
+        </div>
+        {link && (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-cancel"
+            style={{ fontSize: 11, padding: '6px 10px', whiteSpace: 'nowrap' }}
+          >
+            Open ↗
+          </a>
+        )}
+      </div>
+
+      {!isYouTube && link && (
+        <audio
+          controls
+          src={link}
+          key={link}
+          style={{ width: '100%', height: 36, accentColor: 'var(--gold)', marginBottom: 10 }}
+        />
+      )}
+
+      {editable && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input
+            className="form-input"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Track title"
+          />
+          <input
+            className="form-input"
+            value={link}
+            onChange={e => setLink(e.target.value)}
+            placeholder="https://youtube.com/... ya audio link"
+          />
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={saving || !link.trim()}
+            onClick={saveLink}
+            style={{ alignSelf: 'flex-start', fontSize: 12, padding: '6px 14px' }}
+          >
+            {saving ? 'Saving...' : 'Link Save Karein'}
+          </button>
+          {saveError && (
+            <p style={{ color: '#EF4444', fontSize: 12, margin: 0 }}>{saveError}</p>
+          )}
+          {saveSuccess && !saving && (
+            <div style={{
+              padding: '6px 12px', borderRadius: 8,
+              background: 'rgba(16,185,129,.1)', border: '1px solid rgba(16,185,129,.3)',
+              color: '#10B981', fontSize: 11, fontWeight: 600,
+            }}>
+              ✓ Link save ho gayi
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
