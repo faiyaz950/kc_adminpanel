@@ -162,13 +162,13 @@ export default function Sidebar({ isOpen, onClose }) {
         {/* Brand */}
         <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '20px 16px 18px', borderBottom: '1px solid var(--divider)', position: 'relative' }}>
           <div style={{
-            width: 52, height: 52, borderRadius: '50%',
+            width: 58, height: 58, borderRadius: '50%',
             overflow: 'hidden', flexShrink: 0,
             border: '2px solid rgba(212,168,67,.45)',
             boxShadow: '0 0 0 3px rgba(212,168,67,.08), 0 0 16px rgba(212,168,67,.18)',
             background: '#0A1A0C',
           }}>
-            <img src={kcLogo} alt="Karbala Connect" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            <img src={kcLogo} alt="Karbala Connect" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: 'scale(1.25)', transformOrigin: 'center center' }} />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ color: 'var(--gold)', fontWeight: 800, fontSize: 13 }}>Karbala Connect</div>

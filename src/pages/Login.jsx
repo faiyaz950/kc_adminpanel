@@ -251,8 +251,8 @@ const s = {
     marginTop: 8,
   },
   logoInner: {
-    width: 100,
-    height: 100,
+    width: 130,
+    height: 130,
     borderRadius: '50%',
     overflow: 'hidden',
     border: '2px solid rgba(212,168,67,.5)',
@@ -264,6 +264,8 @@ const s = {
     height: '100%',
     objectFit: 'cover',
     display: 'block',
+    transform: 'scale(1.25)',
+    transformOrigin: 'center center',
   },
   title: {
     color: 'var(--white)',
