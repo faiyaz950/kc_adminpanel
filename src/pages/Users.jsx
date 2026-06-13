@@ -2,20 +2,51 @@ import { useState, useEffect } from 'react';
 import client from '../api/client';
 import ErrorBanner from '../components/ErrorBanner';
 
+const USERS_CACHE_KEY = 'kc_admin_users_v1';
+const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+
+const readUsersCache = () => {
+  try {
+    const raw = localStorage.getItem(USERS_CACHE_KEY);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL_MS) return null;
+    return data;
+  } catch { return null; }
+};
+
+const writeUsersCache = (data) => {
+  try { localStorage.setItem(USERS_CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
+};
+
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [fetchError, setFetchError] = useState('');
 
-  const fetchUsers = () => {
+  const fetchUsers = (force = false) => {
+    if (!force) {
+      const cached = readUsersCache();
+      if (cached) {
+        setUsers(cached);
+        setLoading(false);
+        return;
+      }
+    }
     setLoading(true);
     setFetchError('');
     client.get('/users')
-      .then(r => setUsers(r.data))
+      .then(r => {
+        const list = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+        setUsers(list);
+        writeUsersCache(list);
+      })
       .catch(err => setFetchError(
         err?.response?.status === 403
           ? 'Admin access chahiye. Dobara login karein.'
+          : err?.response?.status === 429
+          ? 'Server busy (429) — thodi der baad try karein.'
           : `Users load nahi hue: ${err?.response?.data?.message || err?.message || 'Network error'}`
       ))
       .finally(() => setLoading(false));
@@ -36,6 +67,7 @@ export default function Users() {
           <p className="page-subtitle">{users.length} registered users</p>
         </div>
 
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
         {/* Search */}
         <div style={searchWrap}>
           <svg width="15" height="15" style={searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -48,8 +80,27 @@ export default function Users() {
             style={searchInput}
           />
         </div>
+          <button
+            onClick={() => fetchUsers(true)}
+            disabled={loading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'var(--bg-card)', border: '1px solid var(--divider)',
+              color: 'var(--grey)', borderRadius: 10, padding: '9px 14px',
+              fontSize: 12, fontWeight: 600, opacity: loading ? 0.6 : 1,
+              flexShrink: 0,
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+              style={{ animation: loading ? 'kspin .7s linear infinite' : 'none' }}>
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
-      <ErrorBanner error={fetchError} onRetry={fetchUsers} />
+      <style>{`@keyframes kspin{to{transform:rotate(360deg)}}`}</style>
+      <ErrorBanner error={fetchError} onRetry={() => fetchUsers(true)} />
 
       {/* Stats bar */}
       <div style={statsRow}>
