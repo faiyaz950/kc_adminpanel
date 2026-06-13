@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import client, { API_BASE_URL } from '../api/client';
+import kcLogo from '../assets/kc_logo.png';
 
 export default function Login({ onLogin }) {
   const [email, setEmail]       = useState('');
@@ -123,10 +124,7 @@ export default function Login({ onLogin }) {
         {/* Logo */}
         <div style={s.logoWrap}>
           <div style={s.logoInner}>
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 22h18M9 22V8l3-6 3 6v14M5 22V12l-2-2M19 22V12l2-2"/>
-              <line x1="9" y1="11" x2="15" y2="11"/>
-            </svg>
+            <img src={kcLogo} alt="Karbala Connect" style={s.logoImg} />
           </div>
         </div>
 
@@ -253,15 +251,19 @@ const s = {
     marginTop: 8,
   },
   logoInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 20,
-    background: 'linear-gradient(135deg, rgba(212,168,67,.18), rgba(212,168,67,.04))',
-    border: '1px solid rgba(212,168,67,.35)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 0 30px rgba(212,168,67,.18)',
+    width: 100,
+    height: 100,
+    borderRadius: '50%',
+    overflow: 'hidden',
+    border: '2px solid rgba(212,168,67,.5)',
+    boxShadow: '0 0 0 6px rgba(212,168,67,.08), 0 0 40px rgba(212,168,67,.22)',
+    background: '#0A1A0C',
+  },
+  logoImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block',
   },
   title: {
     color: 'var(--white)',

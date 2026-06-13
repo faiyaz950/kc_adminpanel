@@ -96,7 +96,7 @@ function Layout({ children }) {
           <img
             src={kcLogo}
             alt="Karbala Connect"
-            style={{ height: 36, width: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(212,168,67,.3)' }}
+            style={{ height: 38, width: 38, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(212,168,67,.45)', boxShadow: '0 0 10px rgba(212,168,67,.15)' }}
           />
           <div style={{ width: 34 }} />
         </div>
