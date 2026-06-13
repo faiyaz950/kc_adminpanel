@@ -26,7 +26,7 @@ export default function Anjumans() {
 
   const fetchAnjumans = (force = false) => fetchList({
     key: KEYS.ANJUMANS,
-    url: '/anjumans',
+    url: '/admin/anjumans',
     force,
     setData: setAnjumans,
     setLoading,
