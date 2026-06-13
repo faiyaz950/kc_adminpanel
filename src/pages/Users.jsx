@@ -127,7 +127,7 @@ const searchWrap = {
   position: 'relative',
   display: 'flex',
   alignItems: 'center',
-  flex: '0 0 auto',
+  flex: '1 1 200px',
 };
 
 const searchIcon = {
@@ -143,7 +143,7 @@ const searchInput = {
   borderRadius: 10,
   padding: '9px 14px 9px 36px',
   color: 'var(--white)',
-  width: 240,
+  width: '100%',
   fontSize: 13,
   transition: 'border-color .15s',
 };

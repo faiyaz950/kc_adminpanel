@@ -116,7 +116,7 @@ export default function AnjumanSubmissions() {
       <div className="page-wrapper">
         <div className="page-header">
           <div>
-            <button className="btn-secondary" onClick={() => setSelected(null)} style={{ marginBottom: 12 }}>
+            <button className="btn-cancel" onClick={() => setSelected(null)} style={{ marginBottom: 12 }}>
               ← Back
             </button>
             <h2 className="page-title">{s.name}</h2>
@@ -133,7 +133,7 @@ export default function AnjumanSubmissions() {
 
         {actionError && <ErrorBanner error={actionError} onRetry={() => setActionError('')} />}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+        <div className="form-grid-2" style={{ marginBottom: 24 }}>
           <div className="form-card">
             <h4 style={{ margin: '0 0 14px', color: 'var(--white)' }}>Details</h4>
             <DetailRow label="Naam" value={s.name} />
@@ -185,10 +185,10 @@ export default function AnjumanSubmissions() {
             <button className="btn-primary" disabled={actionLoading} onClick={() => handleApprove(s.id)}>
               {actionLoading ? 'Processing...' : '✓ Approve & Add to Anjumans'}
             </button>
-            <button className="btn-secondary" disabled={actionLoading} onClick={() => handleReject(s.id)} style={{ color: 'var(--red)', borderColor: 'rgba(239,68,68,.3)' }}>
+            <button className="btn-cancel" disabled={actionLoading} onClick={() => handleReject(s.id)} style={{ color: 'var(--red)', borderColor: 'rgba(239,68,68,.3)' }}>
               Reject
             </button>
-            <button className="btn-secondary" onClick={() => handleDelete(s.id)} style={{ color: 'var(--grey)' }}>
+            <button className="btn-cancel" onClick={() => handleDelete(s.id)} style={{ color: 'var(--grey)' }}>
               Delete
             </button>
           </div>
@@ -226,7 +226,7 @@ export default function AnjumanSubmissions() {
       </div>
       <ErrorBanner error={fetchError} onRetry={() => fetchSubmissions(true)} />
 
-      <div className="form-card" style={{ margin: '0 24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+      <div className="form-card" style={{ margin: '0 0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <div style={{ color: 'var(--white)', fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
             App Home: Submit Anjuman Card
@@ -254,7 +254,7 @@ export default function AnjumanSubmissions() {
           <p>Koi submission nahi mili</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, padding: '0 24px 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {filtered.map(s => {
             const st = STATUS_COLORS[s.status] || STATUS_COLORS.pending;
             return (

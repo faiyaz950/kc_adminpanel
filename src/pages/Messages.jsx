@@ -61,7 +61,7 @@ export default function Messages() {
           <p style={{ margin: 0, fontSize: 14 }}>Koi message nahi mila</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '0 24px 24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {filtered.map(m => (
             <div key={m.id} style={card}>
               {/* User info row */}
@@ -101,7 +101,7 @@ function StatPill({ label, value, color, bg, border }) {
 
 function TableSkeleton() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '0 24px 24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {[...Array(5)].map((_, i) => (
         <div key={i} style={{ ...card, opacity: 0.5 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -119,7 +119,7 @@ function TableSkeleton() {
 }
 
 const searchWrap = {
-  position: 'relative', display: 'flex', alignItems: 'center',
+  position: 'relative', display: 'flex', alignItems: 'center', flex: '1 1 200px',
 };
 const searchIcon = {
   position: 'absolute', left: 12, color: 'var(--grey)', pointerEvents: 'none',
@@ -127,10 +127,10 @@ const searchIcon = {
 const searchInput = {
   background: 'var(--bg-surface)', border: '1px solid var(--divider)',
   borderRadius: 10, padding: '9px 14px 9px 36px', color: 'var(--white)',
-  fontSize: 13, outline: 'none', width: 240,
+  fontSize: 13, outline: 'none', width: '100%',
 };
 const statsRow = {
-  display: 'flex', gap: 10, padding: '0 24px 20px',
+  display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap',
 };
 const card = {
   background: 'var(--bg-card)',

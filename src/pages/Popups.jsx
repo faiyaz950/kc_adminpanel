@@ -86,7 +86,7 @@ export default function Popups() {
   };
 
   return (
-    <div style={{ padding: '28px 24px', maxWidth: 900, margin: '0 auto' }}>
+    <div className="page-wrapper" style={{ maxWidth: 900 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
@@ -121,7 +121,7 @@ export default function Popups() {
             {editId ? 'Edit Banner' : 'Add New Banner'}
           </h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div className="form-grid-2" style={{ marginBottom: 16 }}>
             <div>
               <label style={{ color: 'var(--grey)', fontSize: 11, fontWeight: 700, letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>TITLE (optional)</label>
               <input
@@ -240,9 +240,10 @@ export default function Popups() {
             <div key={p.id} style={{
               background: 'var(--bg-card)', border: '1px solid var(--divider)',
               borderRadius: 16, overflow: 'hidden', display: 'flex', alignItems: 'stretch',
+              flexWrap: 'wrap',
             }}>
               {/* Thumbnail */}
-              <div style={{ width: 120, flexShrink: 0, background: 'var(--bg-surface)', position: 'relative' }}>
+              <div style={{ width: 120, minHeight: 90, flexShrink: 0, background: 'var(--bg-surface)', position: 'relative' }}>
                 <img
                   src={p.image_url}
                   alt={p.title || 'Banner'}
@@ -282,7 +283,7 @@ export default function Popups() {
               </div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '14px 16px', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: '12px 16px', alignItems: 'center' }}>
                 <button onClick={() => toggleActive(p)} style={{
                   background: p.is_active ? 'rgba(239,68,68,.08)' : 'rgba(22,163,74,.08)',
                   color: p.is_active ? '#f87171' : 'var(--emerald-light)',

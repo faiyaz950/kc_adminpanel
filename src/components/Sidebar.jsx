@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import client from '../api/client';
+import kcLogo from '../assets/kc_logo.png';
 
 const NAV = [
   {
@@ -161,16 +162,12 @@ export default function Sidebar({ isOpen, onClose }) {
         {/* Brand */}
         <div className="sidebar-brand" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '20px 16px 18px', borderBottom: '1px solid var(--divider)', position: 'relative' }}>
           <div style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: 'linear-gradient(135deg, rgba(212,168,67,.18), rgba(212,168,67,.04))',
-            border: '1px solid rgba(212,168,67,.35)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            boxShadow: '0 0 14px rgba(212,168,67,.12)',
+            width: 44, height: 44, borderRadius: 12,
+            overflow: 'hidden', flexShrink: 0,
+            boxShadow: '0 0 14px rgba(212,168,67,.2)',
+            border: '1px solid rgba(212,168,67,.25)',
           }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 22h18M9 22V8l3-6 3 6v14M5 22V12l-2-2M19 22V12l2-2"/>
-              <line x1="9" y1="11" x2="15" y2="11"/>
-            </svg>
+            <img src={kcLogo} alt="Karbala Connect" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ color: 'var(--gold)', fontWeight: 800, fontSize: 13 }}>Karbala Connect</div>

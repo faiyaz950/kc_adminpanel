@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import kcLogo from './assets/kc_logo.png';
 import Login from './pages/Login';
 import Sidebar from './components/Sidebar';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -42,6 +43,11 @@ function PageLoader() {
 
 function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflowY = sidebarOpen ? 'hidden' : '';
+    return () => { document.body.style.overflowY = ''; };
+  }, [sidebarOpen]);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -87,9 +93,11 @@ function Layout({ children }) {
             <span style={{ display: 'block', width: 22, height: 2, background: 'var(--white)', borderRadius: 2 }} />
             <span style={{ display: 'block', width: 22, height: 2, background: 'var(--white)', borderRadius: 2 }} />
           </button>
-          <span style={{ color: 'var(--gold)', fontWeight: 800, fontSize: 15, letterSpacing: '-0.2px' }}>
-            Karbala Connect
-          </span>
+          <img
+            src={kcLogo}
+            alt="Karbala Connect"
+            style={{ height: 36, width: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(212,168,67,.3)' }}
+          />
           <div style={{ width: 34 }} />
         </div>
 

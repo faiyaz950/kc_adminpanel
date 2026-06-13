@@ -81,7 +81,7 @@ export default function OldNauha() {
   const lyricsCount = tracks.filter(t => t.lyrics && t.lyrics.trim()).length;
 
   return (
-    <div className="page-wrap">
+    <div className="page-wrapper">
       {/* Header */}
       <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
         <div>
@@ -107,7 +107,7 @@ export default function OldNauha() {
         </div>
       </div>
 
-      {fetchError && <ErrorBanner message={fetchError} onRetry={fetchTracks} />}
+      <ErrorBanner error={fetchError} onRetry={fetchTracks} />
 
       {/* Lyrics editor modal */}
       {selected && (
