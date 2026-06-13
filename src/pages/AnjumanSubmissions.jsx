@@ -19,8 +19,16 @@ export default function AnjumanSubmissions() {
   const [selected, setSelected] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [submissionVisible, setSubmissionVisible] = useState(true);
+  const [toggleSaving, setToggleSaving] = useState(false);
 
   useEffect(() => { fetchSubmissions(); }, [statusFilter]);
+
+  useEffect(() => {
+    client.get('/admin/app-settings')
+      .then(r => setSubmissionVisible(!!r.data?.anjuman_submission_visible))
+      .catch(() => {});
+  }, []);
 
   const fetchSubmissions = async (force = false) => {
     setLoading(true);
@@ -74,6 +82,20 @@ export default function AnjumanSubmissions() {
       fetchSubmissions(true);
     } catch (err) {
       alert(formatApiError(err, 'Delete nahi hua.'));
+    }
+  };
+
+  const toggleAppVisibility = async () => {
+    setToggleSaving(true);
+    try {
+      const res = await client.post('/admin/app-settings', {
+        anjuman_submission_visible: !submissionVisible,
+      });
+      setSubmissionVisible(!!res.data?.anjuman_submission_visible);
+    } catch (err) {
+      alert(formatApiError(err, 'App visibility update nahi hui.'));
+    } finally {
+      setToggleSaving(false);
     }
   };
 
@@ -203,6 +225,27 @@ export default function AnjumanSubmissions() {
         </div>
       </div>
       <ErrorBanner error={fetchError} onRetry={() => fetchSubmissions(true)} />
+
+      <div className="form-card" style={{ margin: '0 24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ color: 'var(--white)', fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+            App Home: Submit Anjuman Card
+          </div>
+          <div style={{ color: 'var(--grey)', fontSize: 12 }}>
+            {submissionVisible
+              ? 'Users ko home screen ke last mein submit option dikh raha hai.'
+              : 'Submit option app mein hidden hai.'}
+          </div>
+        </div>
+        <button
+          className={submissionVisible ? 'btn-secondary' : 'btn-primary'}
+          disabled={toggleSaving}
+          onClick={toggleAppVisibility}
+          style={{ minWidth: 130 }}
+        >
+          {toggleSaving ? 'Saving...' : submissionVisible ? 'Hide in App' : 'Show in App'}
+        </button>
+      </div>
 
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--grey)' }}>Loading...</div>
