@@ -530,7 +530,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
               </div>
             </div>
             {saveError && <div className="err-banner" style={{ marginTop: 16 }}>{saveError}</div>}
-            {saving && <p style={{ color: 'var(--emerald-light)', fontSize: 13, marginTop: 12 }}>⬆ Uploading to Cloudinary... please wait</p>}
+            {saving && <p style={{ color: 'var(--emerald-light)', fontSize: 13, marginTop: 12 }}>⬆ Uploading... please wait</p>}
             <div className="form-actions">
               <button type="button" className="btn-cancel" onClick={resetTrackForm}>Cancel</button>
               <button type="submit" className="btn-save" disabled={saving}>
