@@ -11,6 +11,8 @@ import { purgeBadCache } from './api/listCache';
 const Dashboard     = lazy(() => import('./pages/Dashboard'));
 const Tracks        = lazy(() => import('./pages/Tracks'));
 const FeaturedAlbums= lazy(() => import('./pages/FeaturedAlbums'));
+const HomeNauhakhwans = lazy(() => import('./pages/HomeNauhakhwans'));
+const HomeUlemas = lazy(() => import('./pages/HomeUlemas'));
 const Reciters      = lazy(() => import('./pages/Reciters'));
 const Anjumans      = lazy(() => import('./pages/Anjumans'));
 const AnjumanSubmissions = lazy(() => import('./pages/AnjumanSubmissions'));
@@ -170,6 +172,8 @@ export default function App() {
                 <Route path="/"               element={<Dashboard />} />
                 <Route path="/tracks"         element={<Tracks />} />
                 <Route path="/featured-albums"element={<FeaturedAlbums />} />
+                <Route path="/home-nauhakhwans" element={<HomeNauhakhwans />} />
+                <Route path="/home-ulemas" element={<HomeUlemas />} />
                 <Route path="/reciters"       element={<Reciters />} />
                 <Route path="/anjumans"       element={<Anjumans />} />
                 <Route path="/anjuman-submissions" element={<AnjumanSubmissions />} />
