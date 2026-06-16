@@ -10,10 +10,7 @@ import { purgeBadCache } from './api/listCache';
 // Lazy-load all heavy pages for faster initial load
 const Dashboard     = lazy(() => import('./pages/Dashboard'));
 const Tracks        = lazy(() => import('./pages/Tracks'));
-const FeaturedAlbums= lazy(() => import('./pages/FeaturedAlbums'));
-const HomeNauhakhwans = lazy(() => import('./pages/HomeNauhakhwans'));
-const HomeUlemas = lazy(() => import('./pages/HomeUlemas'));
-const HomeBrowseCategories = lazy(() => import('./pages/HomeBrowseCategories'));
+const HomeSettings = lazy(() => import('./pages/HomeSettings'));
 const Reciters      = lazy(() => import('./pages/Reciters'));
 const Anjumans      = lazy(() => import('./pages/Anjumans'));
 const AnjumanSubmissions = lazy(() => import('./pages/AnjumanSubmissions'));
@@ -172,10 +169,11 @@ export default function App() {
               <Routes>
                 <Route path="/"               element={<Dashboard />} />
                 <Route path="/tracks"         element={<Tracks />} />
-                <Route path="/featured-albums"element={<FeaturedAlbums />} />
-                <Route path="/home-nauhakhwans" element={<HomeNauhakhwans />} />
-                <Route path="/home-ulemas" element={<HomeUlemas />} />
-                <Route path="/home-categories" element={<HomeBrowseCategories />} />
+                <Route path="/home-settings"      element={<HomeSettings />} />
+                <Route path="/featured-albums"   element={<Navigate to="/home-settings?tab=albums" replace />} />
+                <Route path="/home-nauhakhwans"  element={<Navigate to="/home-settings?tab=nauhakhwans" replace />} />
+                <Route path="/home-ulemas"       element={<Navigate to="/home-settings?tab=ulemas" replace />} />
+                <Route path="/home-categories"   element={<Navigate to="/home-settings?tab=categories" replace />} />
                 <Route path="/reciters"       element={<Reciters />} />
                 <Route path="/anjumans"       element={<Anjumans />} />
                 <Route path="/anjuman-submissions" element={<AnjumanSubmissions />} />

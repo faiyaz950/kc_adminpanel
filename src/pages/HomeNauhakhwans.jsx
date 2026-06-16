@@ -9,7 +9,7 @@ const COUNTRY_STYLE = {
   Pakistan: { color: '#3B82F6', bg: 'rgba(59,130,246,.12)', border: 'rgba(59,130,246,.3)' },
 };
 
-export default function HomeNauhakhwans() {
+export default function HomeNauhakhwans({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [allNoha, setAllNoha] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -112,10 +112,10 @@ export default function HomeNauhakhwans() {
     : items;
 
   return (
-    <div className="page-wrapper">
+    <div className={embedded ? undefined : 'page-wrapper'}>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Home — Our Nauhakhwans</h2>
+          {!embedded && <h2 className="page-title">Home — Our Nauhakhwans</h2>}
           <p className="page-subtitle">
             {items.length} nauhakhwan{items.length !== 1 ? 's' : ''} · App home screen par is order mein dikhenge
           </p>

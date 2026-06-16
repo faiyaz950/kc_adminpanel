@@ -16,7 +16,7 @@ const ALL_CATEGORIES = [
 
 const metaFor = (id) => ALL_CATEGORIES.find(c => c.id === id) || { id, label: id, sublabel: '', emoji: '📁', color: ACCENT };
 
-export default function HomeBrowseCategories() {
+export default function HomeBrowseCategories({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
@@ -103,10 +103,10 @@ export default function HomeBrowseCategories() {
   const available = ALL_CATEGORIES.filter(c => !visibleIds.has(c.id));
 
   return (
-    <div className="page-wrapper">
+    <div className={embedded ? undefined : 'page-wrapper'}>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Home — Browse Categories</h2>
+          {!embedded && <h2 className="page-title">Home — Browse Categories</h2>}
           <p className="page-subtitle">
             {items.length} card{items.length !== 1 ? 's' : ''} · App home screen par is order mein dikhenge
           </p>

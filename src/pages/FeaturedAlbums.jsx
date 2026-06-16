@@ -17,7 +17,7 @@ const CAT_COLORS = {
 const CAT_LABELS = { naat: 'Masaib' };
 const catLabel = c => c ? (CAT_LABELS[c] || (c.charAt(0).toUpperCase() + c.slice(1))) : '—';
 
-export default function FeaturedAlbums() {
+export default function FeaturedAlbums({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
@@ -85,11 +85,11 @@ export default function FeaturedAlbums() {
   const onDragEnd = () => { dragIndex.current = null; setDragOver(null); };
 
   return (
-    <div className="page-wrapper">
+    <div className={embedded ? undefined : 'page-wrapper'}>
       {/* Header */}
       <div className="page-header">
         <div>
-          <h2 className="page-title">Featured Albums</h2>
+          {!embedded && <h2 className="page-title">Featured Albums</h2>}
           <p className="page-subtitle">
             {items.length} featured track{items.length !== 1 ? 's' : ''} · App mein is order mein dikhenge
           </p>

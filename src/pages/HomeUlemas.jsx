@@ -7,7 +7,7 @@ import SearchInput from '../components/SearchInput';
 const ACCENT = '#7C3AED';
 const ACCENT_LIGHT = '#A78BFA';
 
-export default function HomeUlemas() {
+export default function HomeUlemas({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [allUlemas, setAllUlemas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,10 +107,10 @@ export default function HomeUlemas() {
     : items;
 
   return (
-    <div className="page-wrapper">
+    <div className={embedded ? undefined : 'page-wrapper'}>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Home — Our Ulema</h2>
+          {!embedded && <h2 className="page-title">Home — Our Ulema</h2>}
           <p className="page-subtitle">
             {items.length} ulema{items.length !== 1 ? 's' : ''} · App home screen par is order mein dikhenge
           </p>
