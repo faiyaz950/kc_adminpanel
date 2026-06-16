@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import { fetchList, KEYS } from '../api/listCache';
 import AudioProcessor from '../components/AudioProcessor';
 import ErrorBanner from '../components/ErrorBanner';
 
@@ -11,12 +12,12 @@ const formatDur = (secs) => {
 };
 
 const emptyForm = {
-  title: '', host: '', description: '', series: '',
-  episode_number: '', is_published: true,
+  title: '', ulema_id: '', host: '', description: '', is_published: true,
 };
 
 export default function Podcasts() {
   const [podcasts, setPodcasts]     = useState([]);
+  const [ulemas, setUlemas]         = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [showForm, setShowForm]     = useState(false);
@@ -38,7 +39,10 @@ export default function Podcasts() {
   const audioRef = useRef();
   const formRef  = useRef();
 
-  useEffect(() => { fetchPodcasts(); }, []);
+  useEffect(() => {
+    fetchPodcasts();
+    fetchList({ key: KEYS.ULEMAS, url: '/ulemas', setData: setUlemas, setLoading: () => {}, setError: () => {} });
+  }, []);
 
   useEffect(() => () => {
     if (audioPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(audioPreviewUrl);
@@ -94,10 +98,9 @@ export default function Podcasts() {
     setEditId(p.id);
     setForm({
       title: p.title || '',
+      ulema_id: p.ulema_id ? String(p.ulema_id) : '',
       host: p.host || '',
       description: p.description || '',
-      series: p.series || '',
-      episode_number: p.episode_number ?? '',
       is_published: p.is_published !== false,
     });
     setExistingAudioUrl(p.audio_url || null);
@@ -115,10 +118,13 @@ export default function Podcasts() {
     try {
       const fd = new FormData();
       fd.append('title', form.title.trim());
-      if (form.host.trim())        fd.append('host', form.host.trim());
+      if (form.ulema_id)           fd.append('ulema_id', form.ulema_id);
+      else                         fd.append('ulema_id', '');
+      // host is derived from selected ulema name, or manual text if no ulema chosen
+      const selectedUlema = ulemas.find(u => String(u.id) === String(form.ulema_id));
+      const hostName = selectedUlema ? selectedUlema.name : form.host.trim();
+      if (hostName)                fd.append('host', hostName);
       if (form.description.trim()) fd.append('description', form.description.trim());
-      if (form.series.trim())      fd.append('series', form.series.trim());
-      if (form.episode_number !== '') fd.append('episode_number', form.episode_number);
       fd.append('is_published', form.is_published ? '1' : '0');
       if (finalAudio) fd.append('audio', finalAudio);
       if (imageFile)  fd.append('image', imageFile);
@@ -189,19 +195,20 @@ export default function Podcasts() {
           <div style={s.grid2}>
             <div style={s.field}>
               <label style={s.label}>Title *</label>
-              <input style={s.input} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Episode title" />
+              <input style={s.input} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Podcast title" />
             </div>
             <div style={s.field}>
-              <label style={s.label}>Host / Speaker</label>
-              <input style={s.input} value={form.host} onChange={e => setForm(f => ({ ...f, host: e.target.value }))} placeholder="e.g. Maulana XYZ" />
-            </div>
-            <div style={s.field}>
-              <label style={s.label}>Series / Playlist</label>
-              <input style={s.input} value={form.series} onChange={e => setForm(f => ({ ...f, series: e.target.value }))} placeholder="e.g. Muharram 2024" />
-            </div>
-            <div style={s.field}>
-              <label style={s.label}>Episode Number</label>
-              <input style={s.input} type="number" min="1" value={form.episode_number} onChange={e => setForm(f => ({ ...f, episode_number: e.target.value }))} placeholder="1" />
+              <label style={s.label}>Host / Speaker (Ulema)</label>
+              <select
+                style={s.input}
+                value={form.ulema_id}
+                onChange={e => setForm(f => ({ ...f, ulema_id: e.target.value, host: '' }))}
+              >
+                <option value="">— Ulema select karein (optional) —</option>
+                {ulemas.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -266,8 +273,6 @@ export default function Podcasts() {
               <div style={s.title}>{p.title}</div>
               <div style={s.meta}>
                 {p.host && <span>👤 {p.host}</span>}
-                {p.series && <span>📂 {p.series}</span>}
-                {p.episode_number && <span>Ep {p.episode_number}</span>}
                 {p.duration && <span>⏱ {formatDur(p.duration)}</span>}
                 {p.play_count > 0 && <span>▶ {p.play_count}</span>}
                 <span style={s.badge(p.is_published)}>{p.is_published ? 'Published' : 'Draft'}</span>

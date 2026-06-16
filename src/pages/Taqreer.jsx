@@ -13,7 +13,7 @@ const TRACK_TYPES = [
   { value: 'lecture', label: 'Lecture' },
 ];
 const ASHRA_DAYS = Array.from({ length: 10 }, (_, i) => i + 1);
-const emptyForm = { name: '', bio: '', image_url: null };
+const emptyForm = { name: '', bio: '', image_url: null, show_on_app: true };
 
 const typeLabel = (v) => TRACK_TYPES.find(t => t.value === v)?.label ?? v;
 
@@ -49,6 +49,7 @@ export default function Taqreer() {
       const fd = new FormData();
       fd.append('name', form.name);
       fd.append('bio', form.bio || '');
+      fd.append('show_on_app', form.show_on_app ? '1' : '0');
       if (imageFile) fd.append('image', imageFile);
       if (editId) await client.post(`/ulemas/${editId}`, fd);
       else await client.post('/ulemas', fd);
@@ -59,7 +60,7 @@ export default function Taqreer() {
   };
 
   const handleEdit = (u) => {
-    setForm({ name: u.name, bio: u.bio || '', image_url: u.image_url || null });
+    setForm({ name: u.name, bio: u.bio || '', image_url: u.image_url || null, show_on_app: u.show_on_app !== false });
     setEditId(u.id); setImageFile(null); setShowForm(true); setSaveError('');
     window.scrollTo(0, 0);
   };
@@ -138,6 +139,10 @@ export default function Taqreer() {
                   <img src={imageFile ? URL.createObjectURL(imageFile) : form.image_url} alt="" style={{ width: 68, height: 68, borderRadius: 10, objectFit: 'cover', marginTop: 10, border: '1px solid var(--divider)' }} />
                 )}
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" id="show_on_app" checked={form.show_on_app} onChange={e => setForm(p => ({ ...p, show_on_app: e.target.checked }))} />
+                <label htmlFor="show_on_app" className="form-label" style={{ margin: 0, cursor: 'pointer' }}>App mein dikhao (Show on App)</label>
+              </div>
             </div>
             {saveError && <div className="err-banner" style={{ marginTop: 16 }}>{saveError}</div>}
             <div className="form-actions">
@@ -193,7 +198,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
   const [mauzus, setMauzus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showUlemaForm, setShowUlemaForm] = useState(false);
-  const [ulemaForm, setUlemaForm] = useState({ name: ulema.name, bio: ulema.bio || '', image_url: ulema.image_url || null });
+  const [ulemaForm, setUlemaForm] = useState({ name: ulema.name, bio: ulema.bio || '', image_url: ulema.image_url || null, show_on_app: ulema.show_on_app !== false });
   const [ulemaImageFile, setUlemaImageFile] = useState(null);
   const [ulemaSaving, setUlemaSaving] = useState(false);
   const [ulemaSaveError, setUlemaSaveError] = useState('');
@@ -244,7 +249,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
   };
 
   const resetUlemaForm = () => {
-    setUlemaForm({ name: ulemaInfo.name, bio: ulemaInfo.bio || '', image_url: ulemaInfo.image_url || null });
+    setUlemaForm({ name: ulemaInfo.name, bio: ulemaInfo.bio || '', image_url: ulemaInfo.image_url || null, show_on_app: ulemaInfo.show_on_app !== false });
     setUlemaImageFile(null);
     setUlemaSaveError('');
     setShowUlemaForm(false);
@@ -258,6 +263,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
       const fd = new FormData();
       fd.append('name', ulemaForm.name);
       fd.append('bio', ulemaForm.bio || '');
+      fd.append('show_on_app', ulemaForm.show_on_app ? '1' : '0');
       if (ulemaImageFile) fd.append('image', ulemaImageFile);
       const { data } = await client.post(`/ulemas/${ulemaInfo.id}`, fd);
       setUlemaInfo(data);
@@ -545,6 +551,10 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
               <div style={{ gridColumn: 'span 2' }}><label className="form-label">Bio</label><textarea className="form-input" style={{ height: 80, resize: 'vertical' }} value={ulemaForm.bio} onChange={e => setUlemaForm(p => ({ ...p, bio: e.target.value }))} /></div>
               <div><label className="form-label">Image</label><input type="file" accept="image/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }} onChange={e => setUlemaImageFile(e.target.files[0])} />
                 {(ulemaImageFile || ulemaForm.image_url) && <img src={ulemaImageFile ? URL.createObjectURL(ulemaImageFile) : ulemaForm.image_url} alt="" style={{ width: 68, height: 68, borderRadius: 10, objectFit: 'cover', marginTop: 10, border: '1px solid var(--divider)' }} />}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" id="ulema_show_on_app" checked={ulemaForm.show_on_app} onChange={e => setUlemaForm(p => ({ ...p, show_on_app: e.target.checked }))} />
+                <label htmlFor="ulema_show_on_app" className="form-label" style={{ margin: 0, cursor: 'pointer' }}>App mein dikhao (Show on App)</label>
               </div>
             </div>
             {ulemaSaveError && <div className="err-banner" style={{ marginTop: 16 }}>{ulemaSaveError}</div>}
