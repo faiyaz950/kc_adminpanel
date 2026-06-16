@@ -11,11 +11,13 @@ import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
 
-const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana'];
+const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana', 'marsiya', 'soz_o_salam'];
 const LANGUAGES = {
   dua:      ['Arabic', 'Urdu', 'Hindi', 'Farsi'],
   noha:     ['Urdu', 'Punjabi', 'Hindi', 'Farsi'],
   manqabat: ['Urdu', 'Punjabi', 'Arabic', 'Hindi', 'Farsi'],
+  marsiya:  ['Urdu', 'Punjabi', 'Hindi', 'Farsi'],
+  soz_o_salam: ['Urdu', 'Punjabi', 'Hindi', 'Farsi'],
   naat:     ['Urdu', 'Punjabi', 'Arabic', 'Hindi', 'English', 'Farsi'],
   ziyarat:  ['Arabic', 'Urdu', 'Farsi'],
   kids:     ['Urdu', 'Hindi', 'English', 'Farsi'],
@@ -25,12 +27,14 @@ const OCCASIONS = {
   dua:      ['Subah', 'Shaam', 'Jumma', 'Muharram', 'Ramzan', 'Hajj', 'Ziarat'],
   noha:     ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat'],
   manqabat: ['Wiladat', 'Urs', 'Muharram', 'Ramzan'],
+  marsiya:  ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat'],
+  soz_o_salam: ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat'],
   naat:     ['Rabi ul Awwal', 'Ramzan', 'Jumma', 'Eid'],
   ziyarat:  ['Muharram', 'Safar', 'Wiladat', 'Ziarat', 'General'],
   kids:     ['Muharram', 'Wiladat', 'Ramzan', 'General'],
   tarana:   ['Muharram', 'Wiladat', 'Independence Day', 'General'],
 };
-const CAT_LABELS = { naat: 'Masaib' };
+const CAT_LABELS = { naat: 'Masaib', marsiya: 'Marsiya', soz_o_salam: 'Soz o Salam' };
 const catLabel = c => {
   if (!c) return '—';
   return CAT_LABELS[c] || (c.charAt(0).toUpperCase() + c.slice(1));
@@ -40,6 +44,8 @@ const CAT_COLORS = {
   dua:      { color: '#06B6D4', bg: 'rgba(6,182,212,.12)',   border: 'rgba(6,182,212,.3)'   },
   noha:     { color: '#EF4444', bg: 'rgba(239,68,68,.12)',   border: 'rgba(239,68,68,.3)'   },
   manqabat: { color: '#8B5CF6', bg: 'rgba(139,92,246,.12)', border: 'rgba(139,92,246,.3)'  },
+  marsiya:  { color: '#7F1D1D', bg: 'rgba(127,29,29,.12)',  border: 'rgba(127,29,29,.3)'  },
+  soz_o_salam: { color: '#D97706', bg: 'rgba(217,119,6,.12)', border: 'rgba(217,119,6,.3)' },
   naat:     { color: '#F97316', bg: 'rgba(249,115,22,.12)',  border: 'rgba(249,115,22,.3)'  },
   ziyarat:  { color: '#10B981', bg: 'rgba(16,185,129,.12)',  border: 'rgba(16,185,129,.3)'  },
   kids:     { color: '#F59E0B', bg: 'rgba(245,158,11,.12)',  border: 'rgba(245,158,11,.3)'  },
