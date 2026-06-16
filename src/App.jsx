@@ -11,6 +11,9 @@ import { purgeBadCache } from './api/listCache';
 const Dashboard     = lazy(() => import('./pages/Dashboard'));
 const Tracks        = lazy(() => import('./pages/Tracks'));
 const HomeSettings = lazy(() => import('./pages/HomeSettings'));
+const FeaturedAlbums= lazy(() => import('./pages/FeaturedAlbums'));
+const HomeNauhakhwans = lazy(() => import('./pages/HomeNauhakhwans'));
+const HomeUlemas = lazy(() => import('./pages/HomeUlemas'));
 const Reciters      = lazy(() => import('./pages/Reciters'));
 const Anjumans      = lazy(() => import('./pages/Anjumans'));
 const AnjumanSubmissions = lazy(() => import('./pages/AnjumanSubmissions'));
@@ -22,6 +25,7 @@ const Popups        = lazy(() => import('./pages/Popups'));
 const OldNauhs      = lazy(() => import('./pages/OldNauhs'));
 const OldNauhakhwans = lazy(() => import('./pages/OldNauhakhwans'));
 const OldNauha      = lazy(() => import('./pages/OldNauha'));
+const Podcasts      = lazy(() => import('./pages/Podcasts'));
 
 function PageLoader() {
   return (
@@ -170,10 +174,10 @@ export default function App() {
                 <Route path="/"               element={<Dashboard />} />
                 <Route path="/tracks"         element={<Tracks />} />
                 <Route path="/home-settings"      element={<HomeSettings />} />
-                <Route path="/featured-albums"   element={<Navigate to="/home-settings?tab=albums" replace />} />
-                <Route path="/home-nauhakhwans"  element={<Navigate to="/home-settings?tab=nauhakhwans" replace />} />
-                <Route path="/home-ulemas"       element={<Navigate to="/home-settings?tab=ulemas" replace />} />
-                <Route path="/home-categories"   element={<Navigate to="/home-settings?tab=categories" replace />} />
+                <Route path="/featured-albums"    element={<Navigate to="/home-settings?tab=albums" replace />} />
+                <Route path="/home-nauhakhwans"   element={<Navigate to="/home-settings?tab=nauhakhwans" replace />} />
+                <Route path="/home-ulemas"        element={<Navigate to="/home-settings?tab=ulemas" replace />} />
+                <Route path="/home-categories"    element={<Navigate to="/home-settings?tab=categories" replace />} />
                 <Route path="/reciters"       element={<Reciters />} />
                 <Route path="/anjumans"       element={<Anjumans />} />
                 <Route path="/anjuman-submissions" element={<AnjumanSubmissions />} />
@@ -185,6 +189,7 @@ export default function App() {
                 <Route path="/old-nauhs"      element={<OldNauhs />} />
                 <Route path="/old-nauhakhwans" element={<OldNauhakhwans />} />
                 <Route path="/old-nauha"      element={<OldNauha />} />
+                <Route path="/podcasts"       element={<Podcasts />} />
                 <Route path="*"              element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
