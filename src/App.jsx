@@ -13,6 +13,7 @@ const Tracks        = lazy(() => import('./pages/Tracks'));
 const FeaturedAlbums= lazy(() => import('./pages/FeaturedAlbums'));
 const HomeNauhakhwans = lazy(() => import('./pages/HomeNauhakhwans'));
 const HomeUlemas = lazy(() => import('./pages/HomeUlemas'));
+const HomeBrowseCategories = lazy(() => import('./pages/HomeBrowseCategories'));
 const Reciters      = lazy(() => import('./pages/Reciters'));
 const Anjumans      = lazy(() => import('./pages/Anjumans'));
 const AnjumanSubmissions = lazy(() => import('./pages/AnjumanSubmissions'));
@@ -174,6 +175,7 @@ export default function App() {
                 <Route path="/featured-albums"element={<FeaturedAlbums />} />
                 <Route path="/home-nauhakhwans" element={<HomeNauhakhwans />} />
                 <Route path="/home-ulemas" element={<HomeUlemas />} />
+                <Route path="/home-categories" element={<HomeBrowseCategories />} />
                 <Route path="/reciters"       element={<Reciters />} />
                 <Route path="/anjumans"       element={<Anjumans />} />
                 <Route path="/anjuman-submissions" element={<AnjumanSubmissions />} />
