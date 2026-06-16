@@ -422,6 +422,17 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
     return { groups, other };
   };
 
+  const toggleFeatured = async (t) => {
+    try {
+      const fd = new FormData();
+      fd.append('is_featured', t.is_featured ? '0' : '1');
+      await client.post(`/ulema-tracks/${t.id}`, fd);
+      await fetchTracks();
+    } catch (err) {
+      alert(formatApiError(err, 'Featured update nahi hua.'));
+    }
+  };
+
   const renderTrackRow = (t, i) => (
     <tr key={t.id}>
       <td style={{ color: 'var(--grey-dark)', fontWeight: 700 }}>{i + 1}</td>
@@ -430,6 +441,21 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
       <td style={{ fontSize: 12 }}>{t.mauzu_title || '—'}</td>
       <td style={{ fontSize: 12 }}>{t.day_number ? `Din ${t.day_number}` : '—'}</td>
       <td style={{ fontSize: 12 }}>{t.duration || '—'}</td>
+      <td>
+        <button
+          type="button"
+          className="tbl-btn"
+          onClick={() => toggleFeatured(t)}
+          title={t.is_featured ? 'Featured se hatao' : 'Featured mein daalo'}
+          style={{
+            color: t.is_featured ? 'var(--gold)' : 'var(--grey)',
+            borderColor: t.is_featured ? 'rgba(212,168,67,.35)' : 'var(--divider)',
+            background: t.is_featured ? 'rgba(212,168,67,.12)' : 'transparent',
+          }}
+        >
+          {t.is_featured ? '★ Featured' : '☆ Feature'}
+        </button>
+      </td>
       <td><button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>{playing === t.audio_url ? '■ Stop' : '▶ Play'}</button></td>
       <td><div style={{ display: 'flex', gap: 6 }}><button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button><button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button></div></td>
     </tr>
@@ -590,7 +616,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
               </div>
               <div className="data-table-wrap">
                 <table className="data-table">
-                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
                   <tbody>{group.tracks.map((t, i) => renderTrackRow(t, i))}</tbody>
                 </table>
               </div>
@@ -601,7 +627,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
               <div style={{ marginBottom: 10, color: 'var(--grey)', fontWeight: 700, fontSize: 13 }}>Baqi Audio</div>
               <div className="data-table-wrap">
                 <table className="data-table">
-                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
                   <tbody>{nonMajlisTracks.map((t, i) => renderTrackRow(t, i))}</tbody>
                 </table>
               </div>
@@ -611,7 +637,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
       ) : (
         <div className="data-table-wrap">
           <table className="data-table">
-            <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+            <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
             <tbody>
               {visibleTracks.map((t, i) => renderTrackRow(t, i))}
             </tbody>

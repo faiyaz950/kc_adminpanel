@@ -368,6 +368,17 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
     }
   };
 
+  const toggleFeatured = async (t) => {
+    try {
+      const fd = new FormData();
+      fd.append('is_featured', t.is_featured ? '0' : '1');
+      await client.post(`/anjuman-tracks/${t.id}`, fd);
+      fetchTracks();
+    } catch (err) {
+      alert(formatApiError(err, 'Featured update nahi hua.'));
+    }
+  };
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
@@ -550,7 +561,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
           <table className="data-table">
             <thead>
               <tr>
-                {['#', 'Cover + Title', 'Occasion', 'Duration', 'Plays', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}
+                {['#', 'Cover + Title', 'Occasion', 'Duration', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -577,6 +588,21 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
                   <td style={{ fontSize: 12 }}>{t.duration || '—'}</td>
                   <td>
                     <span style={{ background: 'rgba(22,163,74,.1)', color: 'var(--emerald-light)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{t.play_count}</span>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="tbl-btn"
+                      onClick={() => toggleFeatured(t)}
+                      title={t.is_featured ? 'Featured se hatao' : 'Featured mein daalo'}
+                      style={{
+                        color: t.is_featured ? 'var(--gold)' : 'var(--grey)',
+                        borderColor: t.is_featured ? 'rgba(212,168,67,.35)' : 'var(--divider)',
+                        background: t.is_featured ? 'rgba(212,168,67,.12)' : 'transparent',
+                      }}
+                    >
+                      {t.is_featured ? '★ Featured' : '☆ Feature'}
+                    </button>
                   </td>
                   <td>
                     <button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>

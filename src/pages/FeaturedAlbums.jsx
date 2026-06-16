@@ -17,6 +17,18 @@ const CAT_COLORS = {
 const CAT_LABELS = { naat: 'Masaib' };
 const catLabel = c => c ? (CAT_LABELS[c] || (c.charAt(0).toUpperCase() + c.slice(1))) : '—';
 
+const SOURCE_LABELS = {
+  track: 'Track',
+  ulema_track: 'Ulema',
+  anjuman_track: 'Anjuman',
+};
+const SOURCE_COLORS = {
+  track: null,
+  ulema_track: { color: '#7C3AED', bg: 'rgba(124,58,237,.12)', border: 'rgba(124,58,237,.3)' },
+  anjuman_track: { color: '#8B5CF6', bg: 'rgba(139,92,246,.12)', border: 'rgba(139,92,246,.3)' },
+};
+const itemKey = (track) => `${track.featured_type || 'track'}-${track.featured_source_id ?? track.id}`;
+
 export default function FeaturedAlbums({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +57,11 @@ export default function FeaturedAlbums({ embedded = false }) {
   const handleSave = async () => {
     setSaving(true); setSaveMsg('');
     try {
-      const payload = items.map((t, i) => ({ id: t.id, order: i + 1 }));
+      const payload = items.map((t, i) => ({
+        id: t.featured_source_id ?? t.id,
+        type: t.featured_type || 'track',
+        order: i + 1,
+      }));
       await client.post('/tracks/reorder-featured', { items: payload });
       setSaveMsg('✓ Order save ho gaya!');
       setDirty(false);
@@ -139,7 +155,7 @@ export default function FeaturedAlbums({ embedded = false }) {
         </svg>
         <span>
           <b style={{ color: 'var(--gold)' }}>Drag</b> karein ya <b style={{ color: 'var(--gold)' }}>↑ ↓ arrows</b> use karein order change karne ke liye.
-          Jo 1st number par hai wo app mein sabse pehle dikhega. Tracks ko featured banana <b style={{ color: 'var(--gold)' }}>Tracks page</b> se karein.
+          Jo 1st number par hai wo app mein sabse pehle dikhega. Featured mark karein: <b style={{ color: 'var(--gold)' }}>Tracks</b>, <b style={{ color: 'var(--gold)' }}>Taqreer</b>, ya <b style={{ color: 'var(--gold)' }}>Anjumans</b> page se.
         </span>
       </div>
 
@@ -153,18 +169,19 @@ export default function FeaturedAlbums({ embedded = false }) {
           <div style={{ fontSize: 32, marginBottom: 12 }}>⭐</div>
           <p style={{ color: 'var(--grey)', fontSize: 14, marginBottom: 6 }}>Koi featured track nahi</p>
           <p style={{ color: 'var(--grey-dark)', fontSize: 12 }}>
-            Tracks page par jao aur kisi track ko <b>Featured: Yes</b> mark karo
+            Tracks, Taqreer (Ulema), ya Anjumans page par kisi audio ko <b>Featured</b> mark karein
           </p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {items.map((track, i) => {
-            const cm = CAT_COLORS[track.category] || { color: 'var(--grey)', bg: 'var(--bg-surface)', border: 'var(--divider)' };
+            const sourceType = track.featured_type || 'track';
+            const cm = SOURCE_COLORS[sourceType] || CAT_COLORS[track.category] || { color: 'var(--grey)', bg: 'var(--bg-surface)', border: 'var(--divider)' };
             const isDragOver = dragOver === i;
 
             return (
               <div
-                key={track.id}
+                key={itemKey(track)}
                 draggable
                 onDragStart={() => onDragStart(i)}
                 onDragOver={(e) => onDragOver(e, i)}
@@ -219,7 +236,7 @@ export default function FeaturedAlbums({ embedded = false }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                     <span style={{ color: 'var(--grey)', fontSize: 11 }}>{track.reciter_name || '—'}</span>
                     <span style={{ background: cm.bg, color: cm.color, border: `1px solid ${cm.border}`, padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>
-                      {catLabel(track.category)}
+                      {SOURCE_LABELS[sourceType] || catLabel(track.category)}
                     </span>
                     {track.year && (
                       <span style={{ color: 'var(--grey-dark)', fontSize: 10 }}>{track.year}</span>
