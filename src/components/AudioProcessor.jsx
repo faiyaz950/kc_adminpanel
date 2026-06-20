@@ -69,7 +69,7 @@ async function processAudioFile(file, { compress, bitrate, trim, startSec, endSe
   onProgress(50);
 
   const numCh = Math.min(buf.numberOfChannels, 2);
-  const kbps = compress ? parseInt(bitrate, 10) : 128;
+  const kbps = compress ? parseInt(bitrate, 10) : 320;
   const encoder = new Mp3Encoder(numCh, buf.sampleRate, kbps);
   const blockSize = 1152;
   const chunks = [];
@@ -410,7 +410,7 @@ function parseManualTime(val, duration) {
 export default function AudioProcessor({ file, onProcessed }) {
   const [open, setOpen] = useState(false);
   const [compressOn, setCompressOn] = useState(false);
-  const [bitrate, setBitrate] = useState('96');
+  const [bitrate, setBitrate] = useState('128');
   const [trimOn, setTrimOn] = useState(false);
   const [startR, setStartR] = useState(0);
   const [endR, setEndR] = useState(1);
@@ -518,6 +518,9 @@ export default function AudioProcessor({ file, onProcessed }) {
             <div style={{ marginLeft: 23, marginBottom: 16 }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
                 {[
+                  { val: '320', label: '320 kbps', hint: 'Best quality' },
+                  { val: '256', label: '256 kbps', hint: 'High quality' },
+                  { val: '192', label: '192 kbps', hint: 'Very good' },
                   { val: '128', label: '128 kbps', hint: 'CD quality' },
                   { val: '96',  label: '96 kbps',  hint: 'Balanced' },
                   { val: '64',  label: '64 kbps',  hint: 'Smaller' },
@@ -537,7 +540,7 @@ export default function AudioProcessor({ file, onProcessed }) {
                 ))}
               </div>
               <p style={{ color: 'var(--grey-dark)', fontSize: 10 }}>
-                {formatBytes(file.size)} → ~{formatBytes(file.size * ({'128':0.75,'96':0.55,'64':0.38,'48':0.28,'32':0.18}[bitrate]))}
+                {formatBytes(file.size)} → ~{formatBytes(file.size * ({'320':1.2,'256':0.95,'192':0.72,'128':0.75,'96':0.55,'64':0.38,'48':0.28,'32':0.18}[bitrate] || 0.75))}
               </p>
             </div>
           )}
