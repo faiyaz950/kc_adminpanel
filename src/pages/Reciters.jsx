@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
-import { readCache, readStaleCache, writeCache, KEYS, readBootstrapReciters, sanitizeList } from '../api/listCache';
+import { readCache, readStaleCache, writeCache, invalidateListCache, KEYS, readBootstrapReciters, sanitizeList } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 
@@ -98,6 +98,7 @@ export default function Reciters() {
       if (imageFile) fd.append('image', imageFile);
       if (editId) await client.post(`/reciters/${editId}`, fd);
       else await client.post('/reciters', fd);
+      invalidateListCache(KEYS.TRACKS_BOOTSTRAP);
       resetForm(); fetchReciters(true);
     } catch (err) {
       setSaveError(formatApiError(err, 'Reciter save nahi hua.'));
@@ -119,6 +120,7 @@ export default function Reciters() {
     if (!confirm('Reciter delete karna chahte ho?')) return;
     try {
       await client.delete(`/reciters/${id}`);
+      invalidateListCache(KEYS.TRACKS_BOOTSTRAP);
       fetchReciters();
     } catch (err) {
       alert(formatApiError(err, 'Reciter delete nahi hua.'));
