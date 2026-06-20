@@ -213,6 +213,10 @@ export default function Anjumans() {
                   </>}
                   <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>·</span>
                   <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>{a.total_tracks} tracks</span>
+                  {a.total_play_count > 0 && <>
+                    <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>·</span>
+                    <span style={{ background: 'rgba(22,163,74,.1)', color: 'var(--emerald-light)', padding: '1px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>▶ {a.total_play_count.toLocaleString()}</span>
+                  </>}
                 </div>
                 {a.bio && <p style={{ color: 'var(--grey)', fontSize: 12, lineHeight: 1.5, marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{a.bio}</p>}
 

@@ -171,8 +171,11 @@ export default function Taqreer() {
               </div>
               <div style={{ padding: '14px 14px 12px' }}>
                 <span style={{ color: 'var(--white)', fontWeight: 700, fontSize: 14 }}>{u.name}</span>
-                <div style={{ margin: '6px 0 8px' }}>
+                <div style={{ margin: '6px 0 8px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>{u.total_tracks} audio</span>
+                  {u.total_play_count > 0 && (
+                    <span style={{ background: 'rgba(22,163,74,.1)', color: 'var(--emerald-light)', padding: '1px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700 }}>▶ {u.total_play_count.toLocaleString()}</span>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <button type="button" style={tracksBtn} onClick={() => setSelectedUlema(u)}>
@@ -448,6 +451,9 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
       <td style={{ fontSize: 12 }}>{t.day_number ? `Din ${t.day_number}` : '—'}</td>
       <td style={{ fontSize: 12 }}>{t.duration || '—'}</td>
       <td>
+        <span style={{ background: 'rgba(22,163,74,.1)', color: 'var(--emerald-light)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{t.play_count ?? 0}</span>
+      </td>
+      <td>
         <button
           type="button"
           className="tbl-btn"
@@ -476,7 +482,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
         <div>
           <button onClick={onBack} style={{ background: 'none', color: 'var(--gold)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, padding: 0 }}>← Taqreer</button>
           <h2 className="page-title">{ulemaInfo.name}</h2>
-          <p className="page-subtitle">{tracks.length} total audio</p>
+          <p className="page-subtitle">{tracks.length} total audio · {tracks.reduce((s, t) => s + (Number(t.play_count) || 0), 0).toLocaleString()} plays</p>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-cancel" style={{ padding: '10px 16px' }} onClick={() => {
@@ -626,7 +632,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
               </div>
               <div className="data-table-wrap">
                 <table className="data-table">
-                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
                   <tbody>{group.tracks.map((t, i) => renderTrackRow(t, i))}</tbody>
                 </table>
               </div>
@@ -637,7 +643,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
               <div style={{ marginBottom: 10, color: 'var(--grey)', fontWeight: 700, fontSize: 13 }}>Baqi Audio</div>
               <div className="data-table-wrap">
                 <table className="data-table">
-                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
                   <tbody>{nonMajlisTracks.map((t, i) => renderTrackRow(t, i))}</tbody>
                 </table>
               </div>
@@ -647,7 +653,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
       ) : (
         <div className="data-table-wrap">
           <table className="data-table">
-            <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+            <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
             <tbody>
               {visibleTracks.map((t, i) => renderTrackRow(t, i))}
             </tbody>
