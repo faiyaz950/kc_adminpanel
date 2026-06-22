@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
-import { fetchList, KEYS } from '../api/listCache';
+import { fetchList, invalidateListCache, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
@@ -63,11 +63,16 @@ export default function Anjumans() {
     if (!window.confirm('Anjuman aur uske tamam tracks delete ho jayenge. Sure?')) return;
     try {
       await client.delete(`/anjumans/${id}`);
-      fetchAnjumans();
-      if (selectedAnjuman?.id === id) setSelectedAnjuman(null);
     } catch (err) {
-      alert(formatApiError(err, 'Anjuman delete nahi hua.'));
+      if (err?.response?.status !== 404) {
+        alert(formatApiError(err, 'Anjuman delete nahi hua.'));
+        return;
+      }
     }
+    invalidateListCache(KEYS.ANJUMANS);
+    setAnjumans(prev => prev.filter(a => a.id !== id));
+    if (selectedAnjuman?.id === id) setSelectedAnjuman(null);
+    fetchAnjumans(true);
   };
 
   const resetForm = () => { setForm(emptyForm); setEditId(null); setImageFile(null); setShowForm(false); setSaveError(''); };
