@@ -93,6 +93,11 @@ export default function Tracks() {
   const [search, setSearch] = useState('');
   const [filterReciter, setFilterReciter] = useState(null);
 
+  // Notification state
+  const [notifyTrack, setNotifyTrack] = useState(null);
+  const [notifySending, setNotifySending] = useState(false);
+  const [notifyResult, setNotifyResult] = useState(null);
+
   useEffect(() => { fetchTracks(); }, []);
 
   const applyTracksPayload = (tracks, reciters) => {
@@ -201,6 +206,26 @@ export default function Tracks() {
   const resetForm = () => {
     setForm(emptyForm); setEditId(null); setShowForm(false);
     setAudioFile(null); setImageFile(null); setAudioPreviewUrl(null); setSaveError('');
+  };
+
+  const handleSendNotification = async () => {
+    if (!notifyTrack) return;
+    setNotifySending(true);
+    setNotifyResult(null);
+    try {
+      const res = await client.post('/admin/notifications/send-track', {
+        track_id:   notifyTrack.id,
+        track_type: 'track',
+        title:      notifyTrack.title,
+        reciter:    notifyTrack.reciter_name || '',
+        image_url:  notifyTrack.image_url || '',
+      });
+      setNotifyResult({ success: true, sent: res.data.sent, failed: res.data.failed });
+    } catch (err) {
+      setNotifyResult({ success: false, error: formatApiError(err, 'Notification send nahi hua.') });
+    } finally {
+      setNotifySending(false);
+    }
   };
 
   const setReciter = (id) => {
@@ -558,6 +583,7 @@ export default function Tracks() {
                     setPreviewTrackId={setPreviewTrackId}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onNotify={t => { setNotifyTrack(t); setNotifyResult(null); }}
                   />
                 ))}
               </tbody>
@@ -574,10 +600,86 @@ export default function Tracks() {
                 setPreviewTrackId={setPreviewTrackId}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onNotify={t => { setNotifyTrack(t); setNotifyResult(null); }}
               />
             ))}
           </div>
         </>
+      )}
+
+      {/* Notification Confirm Modal */}
+      {notifyTrack && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,.75)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20,
+        }}>
+          <div style={{
+            background: 'var(--bg-card)', borderRadius: 16, padding: 28,
+            width: '100%', maxWidth: 440, border: '1px solid var(--divider)',
+            boxShadow: '0 24px 60px rgba(0,0,0,.5)',
+          }}>
+            <h3 style={{ color: 'var(--white)', fontSize: 17, fontWeight: 700, marginBottom: 6 }}>
+              🔔 Push Notification Bhejein
+            </h3>
+            <p style={{ color: 'var(--grey)', fontSize: 13, marginBottom: 20 }}>
+              Yeh notification <b style={{ color: 'var(--white)' }}>saare installed users</b> ko jayegi. Users notification tap karenge to yeh track play hoga.
+            </p>
+
+            <div style={{
+              display: 'flex', gap: 12, alignItems: 'center',
+              background: 'var(--bg-surface)', borderRadius: 12, padding: 14,
+              border: '1px solid var(--divider)', marginBottom: 20,
+            }}>
+              {notifyTrack.image_url && (
+                <img src={notifyTrack.image_url} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+              )}
+              <div>
+                <div style={{ color: 'var(--white)', fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{notifyTrack.title}</div>
+                <div style={{ color: 'var(--grey)', fontSize: 12 }}>{notifyTrack.reciter_name || '—'}</div>
+                <div style={{ color: 'var(--grey-dark)', fontSize: 11, marginTop: 4 }}>
+                  {catLabel(notifyTrack.category)} · {notifyTrack.language || ''}
+                </div>
+              </div>
+            </div>
+
+            {notifyResult && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13,
+                background: notifyResult.success ? 'rgba(22,163,74,.12)' : 'rgba(239,68,68,.12)',
+                color: notifyResult.success ? 'var(--emerald-light)' : '#f87171',
+                border: `1px solid ${notifyResult.success ? 'rgba(22,163,74,.3)' : 'rgba(239,68,68,.3)'}`,
+              }}>
+                {notifyResult.success
+                  ? `✅ ${notifyResult.sent} users ko notification gayi! (${notifyResult.failed} failed)`
+                  : `❌ ${notifyResult.error}`}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn-cancel"
+                onClick={() => { setNotifyTrack(null); setNotifyResult(null); }}
+                disabled={notifySending}
+              >
+                {notifyResult?.success ? 'Bandh Karein' : 'Cancel'}
+              </button>
+              {!notifyResult?.success && (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleSendNotification}
+                  disabled={notifySending}
+                  style={{ minWidth: 140 }}
+                >
+                  {notifySending ? 'Bhej rahe hain...' : '🔔 Notification Bhejein'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -655,7 +757,7 @@ function CategoryBadge({ category, cm }) {
   );
 }
 
-function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete }) {
+function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete, onNotify }) {
   const cm = CAT_COLORS[track.category] || {};
   return (
     <>
@@ -684,6 +786,11 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
         <td>
           <button type="button" className="tbl-btn tbl-btn-edit" onClick={() => onEdit(track)}>Edit</button>
           <button type="button" className="tbl-btn tbl-btn-delete" onClick={() => onDelete(track.id)}>Delete</button>
+          <button type="button" className="tbl-btn" onClick={() => onNotify(track)}
+            style={{ background: 'rgba(139,92,246,.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.3)' }}
+            title="Push notification bhejein">
+            🔔
+          </button>
         </td>
       </tr>
       {previewTrackId === track.id && (
@@ -697,7 +804,7 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
   );
 }
 
-function TrackCard({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete }) {
+function TrackCard({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete, onNotify }) {
   const cm = CAT_COLORS[track.category] || {};
   const isPlaying = previewTrackId === track.id;
 
@@ -736,6 +843,11 @@ function TrackCard({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete 
         )}
         <button type="button" className="tbl-btn tbl-btn-edit" onClick={() => onEdit(track)}>Edit</button>
         <button type="button" className="tbl-btn tbl-btn-delete" onClick={() => onDelete(track.id)}>Delete</button>
+        <button type="button" className="tbl-btn" onClick={() => onNotify(track)}
+          style={{ background: 'rgba(139,92,246,.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.3)' }}
+          title="Push notification bhejein">
+          🔔 Notify
+        </button>
       </div>
     </div>
   );
