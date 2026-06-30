@@ -148,6 +148,9 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
         <span style={{ color: 'var(--grey)', fontSize: 11 }}>
           — link paste karein, server convert karega
         </span>
+        <span style={{ color: 'var(--grey-dark)', fontSize: 10, width: '100%', marginTop: 2 }}>
+          Note: YouTube kabhi Hostinger server block karta hai — fail ho to neeche file upload karein
+        </span>
         {cookiesSet && (
           <span style={{
             marginLeft: 'auto',
