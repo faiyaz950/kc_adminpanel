@@ -220,7 +220,7 @@ export default function Tracks() {
         reciter:    notifyTrack.reciter_name || '',
         image_url:  notifyTrack.image_url || '',
       });
-      setNotifyResult({ success: true, sent: res.data.sent, failed: res.data.failed });
+      setNotifyResult({ success: true, sent: res.data.sent ?? 0, failed: res.data.failed ?? 0 });
     } catch (err) {
       setNotifyResult({ success: false, error: formatApiError(err, 'Notification send nahi hua.') });
     } finally {
@@ -652,7 +652,9 @@ export default function Tracks() {
                 border: `1px solid ${notifyResult.success ? 'rgba(22,163,74,.3)' : 'rgba(239,68,68,.3)'}`,
               }}>
                 {notifyResult.success
-                  ? `✅ ${notifyResult.sent} users ko notification gayi! (${notifyResult.failed} failed)`
+                  ? notifyResult.sent === 0
+                    ? `⚠️ Koi user registered nahi hai abhi — jab users naya app install karenge tab FCM token save hoga.`
+                    : `✅ ${notifyResult.sent} users ko notification gayi!${notifyResult.failed > 0 ? ` (${notifyResult.failed} failed)` : ''}`
                   : `❌ ${notifyResult.error}`}
               </div>
             )}
