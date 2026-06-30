@@ -195,9 +195,9 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
         }}>
           <p style={{ color: 'var(--grey)', fontSize: 11, margin: '0 0 10px', lineHeight: 1.5 }}>
             1. Chrome mein YouTube par login karein (jis account ko video access hai)<br />
-            2. Extension install karein: <strong>Get cookies.txt LOCALLY</strong><br />
-            3. youtube.com par cookies export karein → <code style={{ color: 'var(--gold)' }}>cookies.txt</code> file<br />
-            4. Neeche upload karein — ek baar kaafi hai (expire hone par dubara)
+            2. Extension: <strong>Get cookies.txt LOCALLY</strong><br />
+            3. Sirf <strong>youtube.com</strong> par export karein (saari sites nahi — file bahut badi ho jati hai)<br />
+            4. Neeche upload karein — ek baar kaafi hai (expire par dubara)
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{
