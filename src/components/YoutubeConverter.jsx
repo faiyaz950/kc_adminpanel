@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
 
@@ -23,20 +23,6 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
-  const [cookiesSet, setCookiesSet] = useState(false);
-  const [cookiesHasGoogle, setCookiesHasGoogle] = useState(false);
-  const [showCookies, setShowCookies] = useState(false);
-  const [cookieUploading, setCookieUploading] = useState(false);
-  const [cookieMsg, setCookieMsg] = useState('');
-
-  useEffect(() => {
-    client.get('/admin/youtube-cookies')
-      .then(r => {
-        setCookiesSet(!!r.data?.configured);
-        setCookiesHasGoogle(!!r.data?.has_google);
-      })
-      .catch(() => {});
-  }, []);
 
   const validUrl = YOUTUBE_RE.test(url.trim());
 
@@ -49,7 +35,6 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
 
     setConverting(true);
     setError('');
-    setCookieMsg('');
     setStatus('YouTube se audio download ho rahi hai — thoda wait karein...');
 
     try {
@@ -93,43 +78,6 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
     }
   };
 
-  const handleCookiesUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCookieUploading(true);
-    setCookieMsg('');
-    try {
-      const fd = new FormData();
-      fd.append('cookies_file', file);
-      const res = await client.post('/admin/youtube-cookies', fd);
-      setCookiesSet(true);
-      setCookiesHasGoogle(!!res.data?.has_google);
-      setCookieMsg(res.data?.warning || res.data?.message || 'Cookies save ho gayi.');
-      setShowCookies(false);
-    } catch (err) {
-      setCookieMsg(formatApiError(err, 'Cookies upload nahi hui.'));
-    } finally {
-      setCookieUploading(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleCookiesRemove = async () => {
-    if (!confirm('YouTube cookies hata deni hain?')) return;
-    setCookieUploading(true);
-    setCookieMsg('');
-    try {
-      await client.delete('/admin/youtube-cookies');
-      setCookiesSet(false);
-      setCookiesHasGoogle(false);
-      setCookieMsg('Cookies hata di gayi.');
-    } catch (err) {
-      setCookieMsg(formatApiError(err, 'Cookies delete nahi hui.'));
-    } finally {
-      setCookieUploading(false);
-    }
-  };
-
   return (
     <div style={{
       marginTop: 12,
@@ -138,7 +86,7 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
       background: 'var(--bg-surface)',
       border: '1px solid var(--divider)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#FF0000">
           <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
         </svg>
@@ -148,21 +96,6 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
         <span style={{ color: 'var(--grey)', fontSize: 11 }}>
           — link paste karein, server convert karega
         </span>
-        <span style={{ color: 'var(--grey-dark)', fontSize: 10, width: '100%', marginTop: 2 }}>
-          Note: YouTube kabhi Hostinger server block karta hai — fail ho to neeche file upload karein
-        </span>
-        {cookiesSet && (
-          <span style={{
-            marginLeft: 'auto',
-            fontSize: 10, fontWeight: 700,
-            color: cookiesHasGoogle ? 'var(--emerald-light)' : '#fbbf24',
-            background: cookiesHasGoogle ? 'rgba(22,163,74,.1)' : 'rgba(251,191,36,.1)',
-            border: `1px solid ${cookiesHasGoogle ? 'rgba(22,163,74,.25)' : 'rgba(251,191,36,.3)'}`,
-            padding: '2px 8px', borderRadius: 20,
-          }}>
-            {cookiesHasGoogle ? 'Private OK' : 'Cookies weak'}
-          </span>
-        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -187,64 +120,6 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
         </button>
       </div>
 
-      <div style={{ marginTop: 10 }}>
-        <button
-          type="button"
-          onClick={() => setShowCookies(s => !s)}
-          style={{
-            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-            color: 'var(--gold)', fontSize: 11, fontWeight: 600,
-          }}
-        >
-          {showCookies ? '▲' : '▼'} Private / unlisted videos — cookies setup {cookiesSet ? '(set)' : ''}
-        </button>
-      </div>
-
-      {showCookies && (
-        <div style={{
-          marginTop: 10, padding: 12, borderRadius: 8,
-          background: 'var(--bg-card)', border: '1px solid var(--divider)',
-        }}>
-          <p style={{ color: 'var(--grey)', fontSize: 11, margin: '0 0 10px', lineHeight: 1.5 }}>
-            <strong>Public videos:</strong> "Cookies hataein" dabao, phir try karein — cookies public videos ko bigaad deti hain.<br />
-            <strong>Private videos:</strong> login → extension se <strong>full export</strong> → upload karein.
-          </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <label style={{
-              display: 'inline-block', padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-              background: 'rgba(212,168,67,.12)', color: 'var(--gold)',
-              border: '1px solid rgba(212,168,67,.35)', cursor: cookieUploading ? 'wait' : 'pointer',
-            }}>
-              {cookieUploading ? 'Uploading...' : cookiesSet ? 'Nayi cookies upload' : 'cookies.txt upload'}
-              <input
-                type="file"
-                accept=".txt,text/plain"
-                onChange={handleCookiesUpload}
-                disabled={cookieUploading}
-                style={{ display: 'none' }}
-              />
-            </label>
-            {cookiesSet && (
-              <button
-                type="button"
-                onClick={handleCookiesRemove}
-                disabled={cookieUploading}
-                style={{
-                  padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                  background: 'transparent', color: '#f87171', border: '1px solid rgba(248,113,113,.3)',
-                  cursor: 'pointer',
-                }}
-              >
-                Cookies hataein
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {cookieMsg && (
-        <p style={{ color: cookieMsg.includes('nahi mili') || cookieMsg.includes('fail') ? '#fbbf24' : 'var(--gold)', fontSize: 11, marginTop: 8, marginBottom: 0 }}>{cookieMsg}</p>
-      )}
       {status && (
         <p style={{ color: 'var(--gold)', fontSize: 11, marginTop: 10, marginBottom: 0 }}>
           {status}
