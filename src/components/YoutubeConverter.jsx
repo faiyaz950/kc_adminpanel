@@ -206,10 +206,8 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
           background: 'var(--bg-card)', border: '1px solid var(--divider)',
         }}>
           <p style={{ color: 'var(--grey)', fontSize: 11, margin: '0 0 10px', lineHeight: 1.5 }}>
-            <strong>Public videos:</strong> cookies ki zaroorat nahi — pehle bina cookies try karein.<br />
-            <strong>Private videos:</strong> Chrome mein login → extension <strong>Get cookies.txt LOCALLY</strong> →
-            <strong> saari sites / full export</strong> (server sirf YouTube+Google cookies rakhega)<br />
-            Sirf youtube.com export karne se private videos fail ho sakti hain.
+            <strong>Public videos:</strong> "Cookies hataein" dabao, phir try karein — cookies public videos ko bigaad deti hain.<br />
+            <strong>Private videos:</strong> login → extension se <strong>full export</strong> → upload karein.
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{
