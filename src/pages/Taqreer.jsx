@@ -5,6 +5,7 @@ import { fetchList, invalidateListCache, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
+import NotifyModal from '../components/NotifyModal';
 
 const TRACK_TYPES = [
   { value: 'ashra_majlis', label: 'Majalis' },
@@ -223,6 +224,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
   const [audioPreview, setAudioPreview] = useState(null);
   const [trackImageUrl, setTrackImageUrl] = useState(null);
   const [playing, setPlaying] = useState(null);
+  const [notifyTrack, setNotifyTrack] = useState(null);
   const [filterType, setFilterType] = useState('all');
 
   useEffect(() => { fetchAll(); }, [ulemaInfo.id]);
@@ -469,7 +471,13 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
         </button>
       </td>
       <td><button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>{playing === t.audio_url ? '■ Stop' : '▶ Play'}</button></td>
-      <td><div style={{ display: 'flex', gap: 6 }}><button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button><button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button></div></td>
+      <td><div style={{ display: 'flex', gap: 6 }}>
+        <button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button>
+        <button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button>
+        <button className="tbl-btn" onClick={() => setNotifyTrack(t)}
+          style={{ background: 'rgba(139,92,246,.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.3)' }}
+          title="Push notification bhejein">🔔</button>
+      </div></td>
     </tr>
   );
 
@@ -660,6 +668,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
           </table>
         </div>
       )}
+      <NotifyModal track={notifyTrack} trackType="ulema-track" onClose={() => setNotifyTrack(null)} />
     </div>
   );
 }
