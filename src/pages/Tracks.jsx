@@ -10,6 +10,7 @@ import {
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
+import YoutubeConverter from '../components/YoutubeConverter';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana', 'marsiya', 'soz', 'salam'];
 const LANGUAGES = {
@@ -459,6 +460,21 @@ export default function Tracks() {
               <FormField label="MP3 / Audio File" fullWidth>
                 <p style={{ color: 'var(--grey)', fontSize: 11, marginBottom: 8 }}>
                   Duration MP3 se automatically detect hogi — manually set karne ki zaroorat nahi.
+                </p>
+                <YoutubeConverter
+                  disabled={saving}
+                  onConverted={(file, previewUrl) => {
+                    setAudioFile(file);
+                    if (audioPreviewUrl && audioPreviewUrl.startsWith('blob:')) URL.revokeObjectURL(audioPreviewUrl);
+                    setAudioPreviewUrl(previewUrl);
+                    setSaveError('');
+                  }}
+                  onTitleSuggest={title => {
+                    if (!form.title.trim()) setForm(f => ({ ...f, title }));
+                  }}
+                />
+                <p style={{ color: 'var(--grey-dark)', fontSize: 11, margin: '12px 0 8px', textAlign: 'center' }}>
+                  — ya file upload karein —
                 </p>
                 <input type="file" accept="audio/*" className="form-input" style={{ paddingTop: 8, paddingBottom: 8 }}
                   onChange={e => {
