@@ -24,13 +24,17 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [cookiesSet, setCookiesSet] = useState(false);
+  const [cookiesHasGoogle, setCookiesHasGoogle] = useState(false);
   const [showCookies, setShowCookies] = useState(false);
   const [cookieUploading, setCookieUploading] = useState(false);
   const [cookieMsg, setCookieMsg] = useState('');
 
   useEffect(() => {
     client.get('/admin/youtube-cookies')
-      .then(r => setCookiesSet(!!r.data?.configured))
+      .then(r => {
+        setCookiesSet(!!r.data?.configured);
+        setCookiesHasGoogle(!!r.data?.has_google);
+      })
       .catch(() => {});
   }, []);
 
@@ -45,6 +49,7 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
 
     setConverting(true);
     setError('');
+    setCookieMsg('');
     setStatus('YouTube se audio download ho rahi hai — thoda wait karein...');
 
     try {
@@ -98,7 +103,8 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
       fd.append('cookies_file', file);
       const res = await client.post('/admin/youtube-cookies', fd);
       setCookiesSet(true);
-      setCookieMsg(res.data?.message || 'Cookies save ho gayi.');
+      setCookiesHasGoogle(!!res.data?.has_google);
+      setCookieMsg(res.data?.warning || res.data?.message || 'Cookies save ho gayi.');
       setShowCookies(false);
     } catch (err) {
       setCookieMsg(formatApiError(err, 'Cookies upload nahi hui.'));
@@ -115,6 +121,7 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
     try {
       await client.delete('/admin/youtube-cookies');
       setCookiesSet(false);
+      setCookiesHasGoogle(false);
       setCookieMsg('Cookies hata di gayi.');
     } catch (err) {
       setCookieMsg(formatApiError(err, 'Cookies delete nahi hui.'));
@@ -144,11 +151,13 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
         {cookiesSet && (
           <span style={{
             marginLeft: 'auto',
-            fontSize: 10, fontWeight: 700, color: 'var(--emerald-light)',
-            background: 'rgba(22,163,74,.1)', border: '1px solid rgba(22,163,74,.25)',
+            fontSize: 10, fontWeight: 700,
+            color: cookiesHasGoogle ? 'var(--emerald-light)' : '#fbbf24',
+            background: cookiesHasGoogle ? 'rgba(22,163,74,.1)' : 'rgba(251,191,36,.1)',
+            border: `1px solid ${cookiesHasGoogle ? 'rgba(22,163,74,.25)' : 'rgba(251,191,36,.3)'}`,
             padding: '2px 8px', borderRadius: 20,
           }}>
-            Private OK
+            {cookiesHasGoogle ? 'Private OK' : 'Cookies weak'}
           </span>
         )}
       </div>
@@ -194,10 +203,10 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
           background: 'var(--bg-card)', border: '1px solid var(--divider)',
         }}>
           <p style={{ color: 'var(--grey)', fontSize: 11, margin: '0 0 10px', lineHeight: 1.5 }}>
-            1. Chrome mein YouTube par login karein (jis account ko video access hai)<br />
-            2. Extension: <strong>Get cookies.txt LOCALLY</strong><br />
-            3. Sirf <strong>youtube.com</strong> par export karein (saari sites nahi — file bahut badi ho jati hai)<br />
-            4. Neeche upload karein — ek baar kaafi hai (expire par dubara)
+            <strong>Public videos:</strong> cookies ki zaroorat nahi — pehle bina cookies try karein.<br />
+            <strong>Private videos:</strong> Chrome mein login → extension <strong>Get cookies.txt LOCALLY</strong> →
+            <strong> saari sites / full export</strong> (server sirf YouTube+Google cookies rakhega)<br />
+            Sirf youtube.com export karne se private videos fail ho sakti hain.
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{
@@ -233,7 +242,7 @@ export default function YoutubeConverter({ onConverted, onTitleSuggest, disabled
       )}
 
       {cookieMsg && (
-        <p style={{ color: 'var(--gold)', fontSize: 11, marginTop: 8, marginBottom: 0 }}>{cookieMsg}</p>
+        <p style={{ color: cookieMsg.includes('nahi mili') || cookieMsg.includes('fail') ? '#fbbf24' : 'var(--gold)', fontSize: 11, marginTop: 8, marginBottom: 0 }}>{cookieMsg}</p>
       )}
       {status && (
         <p style={{ color: 'var(--gold)', fontSize: 11, marginTop: 10, marginBottom: 0 }}>
