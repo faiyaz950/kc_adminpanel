@@ -5,6 +5,7 @@ import { fetchList, invalidateListCache, KEYS } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
+import NotifyModal from '../components/NotifyModal';
 
 const OCCASIONS = ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat', 'General'];
 const emptyForm = { name: '', state: '', city: '', bio: '', is_verified: false, image_url: null };
@@ -271,6 +272,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
   const [audioPreview, setAudioPreview] = useState(null);
   const [trackImageUrl, setTrackImageUrl] = useState(null);
   const [playing, setPlaying] = useState(null);
+  const [notifyTrack, setNotifyTrack] = useState(null);
 
   useEffect(() => { fetchTracks(); }, [anjumanInfo.id]);
 
@@ -622,12 +624,16 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button>
                       <button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button>
+                      <button className="tbl-btn" onClick={() => setNotifyTrack(t)}
+                        style={{ background: 'rgba(139,92,246,.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.3)' }}
+                        title="Push notification bhejein">🔔</button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <NotifyModal track={notifyTrack} trackType="anjuman-track" onClose={() => setNotifyTrack(null)} />
         </div>
       )}
     </div>

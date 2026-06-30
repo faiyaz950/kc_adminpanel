@@ -4,6 +4,7 @@ import client from '../api/client';
 import { formatApiError } from '../api/errors';
 import AudioProcessor from '../components/AudioProcessor';
 import ErrorBanner from '../components/ErrorBanner';
+import NotifyModal from '../components/NotifyModal';
 
 const COUNTRIES = ['India', 'Pakistan'];
 
@@ -22,6 +23,7 @@ export default function OldNauhs() {
   const [saving, setSaving]         = useState(false);
   const [saveError, setSaveError]   = useState('');
   const [deleteId, setDeleteId]     = useState(null);
+  const [notifyTrack, setNotifyTrack] = useState(null);
 
   // form
   const [title, setTitle]           = useState('');
@@ -543,12 +545,27 @@ export default function OldNauhs() {
                       <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
                     </svg>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setNotifyTrack(track)}
+                    style={{
+                      background: 'rgba(139,92,246,.12)',
+                      border: '1px solid rgba(139,92,246,.3)',
+                      color: '#a78bfa',
+                      borderRadius: 8,
+                      padding: '7px 10px',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                    }}
+                    title="Push notification bhejein"
+                  >🔔</button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      <NotifyModal track={notifyTrack} trackType="old-nauh" onClose={() => setNotifyTrack(null)} />
     </div>
   );
 }
