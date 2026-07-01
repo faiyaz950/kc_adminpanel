@@ -11,6 +11,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
 import YoutubeConverter from '../components/YoutubeConverter';
+import { StorageBadges } from '../components/StorageBadge';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana', 'marsiya', 'soz', 'salam'];
 const LANGUAGES = {
@@ -794,6 +795,9 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
           }
         </td>
         <td>
+          <StorageBadges imageUrl={track.image_url} audioUrl={track.audio_url} />
+        </td>
+        <td>
           {track.audio_url
             ? <button type="button" className="tbl-btn tbl-btn-play" onClick={() => setPreviewTrackId(previewTrackId === track.id ? null : track.id)}>
                 {previewTrackId === track.id ? '■ Stop' : '▶ Play'}
@@ -845,6 +849,7 @@ function TrackCard({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete,
             {track.is_featured && (
               <span style={{ background: 'rgba(212,168,67,.12)', color: 'var(--gold)', border: '1px solid rgba(212,168,67,.3)', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>⭐ Featured</span>
             )}
+            <StorageBadges imageUrl={track.image_url} audioUrl={track.audio_url} />
           </div>
         </div>
       </div>

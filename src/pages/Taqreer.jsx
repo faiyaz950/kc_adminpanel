@@ -6,6 +6,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
 import NotifyModal from '../components/NotifyModal';
+import { StorageBadges } from '../components/StorageBadge';
 
 const TRACK_TYPES = [
   { value: 'ashra_majlis', label: 'Majalis' },
@@ -470,6 +471,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
           {t.is_featured ? '★ Featured' : '☆ Feature'}
         </button>
       </td>
+      <td><StorageBadges imageUrl={t.image_url} audioUrl={t.audio_url} /></td>
       <td><button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>{playing === t.audio_url ? '■ Stop' : '▶ Play'}</button></td>
       <td><div style={{ display: 'flex', gap: 6 }}>
         <button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button>

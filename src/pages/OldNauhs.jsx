@@ -5,6 +5,7 @@ import { formatApiError } from '../api/errors';
 import AudioProcessor from '../components/AudioProcessor';
 import ErrorBanner from '../components/ErrorBanner';
 import NotifyModal from '../components/NotifyModal';
+import { StorageBadges } from '../components/StorageBadge';
 
 const COUNTRIES = ['India', 'Pakistan'];
 
@@ -505,6 +506,7 @@ export default function OldNauhs() {
                         Lyrics
                       </span>
                     )}
+                    <StorageBadges imageUrl={track.image_url} audioUrl={track.audio_url} />
                   </div>
                 </div>
 

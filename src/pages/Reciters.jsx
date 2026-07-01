@@ -4,6 +4,7 @@ import { formatApiError } from '../api/errors';
 import { readCache, readStaleCache, writeCache, invalidateListCache, KEYS, readBootstrapReciters, sanitizeList } from '../api/listCache';
 import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
+import StorageBadge from '../components/StorageBadge';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana', 'marsiya', 'soz', 'salam'];
 const LANGUAGES = ['Arabic', 'Urdu', 'Punjabi', 'Hindi', 'Farsi', 'English'];
@@ -323,6 +324,9 @@ function ReciterCard({ r, onEdit, onDelete }) {
                   📍 {r.country}
                 </span>
               )}
+            </div>
+            <div style={{ marginTop: 5 }}>
+              <StorageBadge url={r.image_url} />
             </div>
           </div>
         </div>

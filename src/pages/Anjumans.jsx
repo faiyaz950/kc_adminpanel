@@ -6,6 +6,7 @@ import ErrorBanner from '../components/ErrorBanner';
 import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
 import NotifyModal from '../components/NotifyModal';
+import { StorageBadges } from '../components/StorageBadge';
 
 const OCCASIONS = ['Muharram', 'Safar', 'Chehlum', 'Wiladat', 'Shahadat', 'General'];
 const emptyForm = { name: '', state: '', city: '', bio: '', is_verified: false, image_url: null };
@@ -614,6 +615,9 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
                     >
                       {t.is_featured ? '★ Featured' : '☆ Feature'}
                     </button>
+                  </td>
+                  <td>
+                    <StorageBadges imageUrl={t.image_url} audioUrl={t.audio_url} />
                   </td>
                   <td>
                     <button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>
