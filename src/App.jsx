@@ -22,6 +22,7 @@ const Taqreer       = lazy(() => import('./pages/Taqreer'));
 const Users         = lazy(() => import('./pages/Users'));
 const Messages      = lazy(() => import('./pages/Messages'));
 const Popups        = lazy(() => import('./pages/Popups'));
+const AudioAds      = lazy(() => import('./pages/AudioAds'));
 const OldNauhs      = lazy(() => import('./pages/OldNauhs'));
 const OldNauhakhwans = lazy(() => import('./pages/OldNauhakhwans'));
 const OldNauha      = lazy(() => import('./pages/OldNauha'));
@@ -187,6 +188,7 @@ export default function App() {
                 <Route path="/users"          element={<Users />} />
                 <Route path="/messages"       element={<Messages />} />
                 <Route path="/popups"         element={<Popups />} />
+                <Route path="/audio-ads"      element={<AudioAds />} />
                 <Route path="/old-nauhs"      element={<OldNauhs />} />
                 <Route path="/old-nauhakhwans" element={<OldNauhakhwans />} />
                 <Route path="/old-nauha"      element={<OldNauha />} />

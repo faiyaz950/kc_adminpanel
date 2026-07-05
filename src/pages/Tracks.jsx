@@ -75,7 +75,7 @@ const resolveLanguage = (category, language) => {
 const CURRENT_YEAR = new Date().getFullYear();
 const TRACK_YEARS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURRENT_YEAR - i);
 
-const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: defaultLanguage('dua'), occasion: '', year: '', is_featured: false, lyrics: '' };
+const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: defaultLanguage('dua'), occasion: '', year: '', is_featured: false, lyrics: '', ads_enabled: true };
 
 export default function Tracks() {
   const [tracks, setTracks] = useState([]);
@@ -173,6 +173,7 @@ export default function Tracks() {
       const payload = { ...form, language };
       ['title', 'category', 'reciter_id', 'reciter_name', 'language', 'occasion', 'year', 'lyrics'].forEach(k => fd.append(k, payload[k] ?? ''));
       fd.append('is_featured', form.is_featured ? '1' : '0');
+      fd.append('ads_enabled', form.ads_enabled === false ? '0' : '1');
       if (audioFile) fd.append('audio', audioFile);
       if (imageFile) fd.append('image', imageFile);
       if (editId) await client.post(`/tracks/${editId}`, fd);
@@ -467,6 +468,12 @@ export default function Tracks() {
                 <select className="form-input" value={form.is_featured ? 'yes' : 'no'} onChange={e => setForm(f => ({ ...f, is_featured: e.target.value === 'yes' }))}>
                   <option value="no">No</option>
                   <option value="yes">⭐ Yes — Featured</option>
+                </select>
+              </FormField>
+              <FormField label="Audio Ads">
+                <select className="form-input" value={form.ads_enabled === false ? 'no' : 'yes'} onChange={e => setForm(f => ({ ...f, ads_enabled: e.target.value === 'yes' }))}>
+                  <option value="yes">🔊 Yes — Play ads on this track</option>
+                  <option value="no">No — Ad-free</option>
                 </select>
               </FormField>
               {editId && (

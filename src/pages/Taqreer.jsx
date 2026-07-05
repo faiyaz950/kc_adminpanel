@@ -445,6 +445,17 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
     }
   };
 
+  const toggleAds = async (t) => {
+    try {
+      const fd = new FormData();
+      fd.append('ads_enabled', t.ads_enabled === false ? '1' : '0');
+      await client.post(`/ulema-tracks/${t.id}`, fd);
+      await fetchTracks();
+    } catch (err) {
+      alert(formatApiError(err, 'Ads setting update nahi hua.'));
+    }
+  };
+
   const renderTrackRow = (t, i) => (
     <tr key={t.id}>
       <td style={{ color: 'var(--grey-dark)', fontWeight: 700 }}>{i + 1}</td>
@@ -472,6 +483,21 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
         </button>
       </td>
       <td><StorageBadges imageUrl={t.image_url} audioUrl={t.audio_url} /></td>
+      <td>
+        <button
+          type="button"
+          className="tbl-btn"
+          onClick={() => toggleAds(t)}
+          title={t.ads_enabled === false ? 'Ads on karein' : 'Ads off karein'}
+          style={{
+            color: t.ads_enabled === false ? 'var(--grey)' : 'var(--emerald-light)',
+            borderColor: t.ads_enabled === false ? 'var(--divider)' : 'rgba(22,163,74,.35)',
+            background: t.ads_enabled === false ? 'transparent' : 'rgba(22,163,74,.12)',
+          }}
+        >
+          {t.ads_enabled === false ? '🔇 Off' : '🔊 On'}
+        </button>
+      </td>
       <td><button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>{playing === t.audio_url ? '■ Stop' : '▶ Play'}</button></td>
       <td><div style={{ display: 'flex', gap: 6 }}>
         <button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button>
@@ -642,7 +668,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
               </div>
               <div className="data-table-wrap">
                 <table className="data-table">
-                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Plays', 'Featured', 'Storage', 'Ads', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
                   <tbody>{group.tracks.map((t, i) => renderTrackRow(t, i))}</tbody>
                 </table>
               </div>
@@ -653,7 +679,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
               <div style={{ marginBottom: 10, color: 'var(--grey)', fontWeight: 700, fontSize: 13 }}>Baqi Audio</div>
               <div className="data-table-wrap">
                 <table className="data-table">
-                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                  <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Plays', 'Featured', 'Storage', 'Ads', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
                   <tbody>{nonMajlisTracks.map((t, i) => renderTrackRow(t, i))}</tbody>
                 </table>
               </div>
@@ -663,7 +689,7 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
       ) : (
         <div className="data-table-wrap">
           <table className="data-table">
-            <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+            <thead><tr>{['#', 'Type', 'Title', 'Mauzu', 'Din', 'Duration', 'Plays', 'Featured', 'Storage', 'Ads', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
             <tbody>
               {visibleTracks.map((t, i) => renderTrackRow(t, i))}
             </tbody>

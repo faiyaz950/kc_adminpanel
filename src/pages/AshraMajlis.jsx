@@ -338,6 +338,17 @@ function MaulanaTracks({ maulana, onBack, onMaulanaUpdated }) {
     }
   };
 
+  const toggleAds = async (t) => {
+    try {
+      const fd = new FormData();
+      fd.append('ads_enabled', t.ads_enabled === false ? '1' : '0');
+      await client.post(`/maulana-tracks/${t.id}`, fd);
+      fetchTracks();
+    } catch (err) {
+      alert(formatApiError(err, 'Ads setting update nahi hua.'));
+    }
+  };
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
@@ -481,7 +492,7 @@ function MaulanaTracks({ maulana, onBack, onMaulanaUpdated }) {
           <table className="data-table">
             <thead>
               <tr>
-                {['#', 'Cover + Title', 'Din', 'Duration', 'Plays', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}
+                {['#', 'Cover + Title', 'Din', 'Duration', 'Plays', 'Ads', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -503,6 +514,21 @@ function MaulanaTracks({ maulana, onBack, onMaulanaUpdated }) {
                   <td style={{ fontSize: 12 }}>{t.duration || '—'}</td>
                   <td>
                     <span style={{ background: 'rgba(22,163,74,.1)', color: 'var(--emerald-light)', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{t.play_count}</span>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="tbl-btn"
+                      onClick={() => toggleAds(t)}
+                      title={t.ads_enabled === false ? 'Ads on karein' : 'Ads off karein'}
+                      style={{
+                        color: t.ads_enabled === false ? 'var(--grey)' : 'var(--emerald-light)',
+                        borderColor: t.ads_enabled === false ? 'var(--divider)' : 'rgba(22,163,74,.35)',
+                        background: t.ads_enabled === false ? 'transparent' : 'rgba(22,163,74,.12)',
+                      }}
+                    >
+                      {t.ads_enabled === false ? '🔇 Off' : '🔊 On'}
+                    </button>
                   </td>
                   <td>
                     <button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>

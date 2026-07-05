@@ -198,6 +198,17 @@ export default function OldNauhs() {
     }
   }
 
+  async function toggleAds(track) {
+    try {
+      const fd = new FormData();
+      fd.append('ads_enabled', track.ads_enabled === false ? '1' : '0');
+      await client.post(`/old-nauhs/${track.id}`, fd);
+      fetchTracks();
+    } catch (e) {
+      alert(formatApiError(e, 'Ads setting update nahi hua.'));
+    }
+  }
+
   const audioPlayerSrc = audioPreviewUrl || existingAudioUrl;
   const coverPreview = imagePreviewUrl || existingImageUrl;
 
@@ -512,6 +523,23 @@ export default function OldNauhs() {
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleAds(track)}
+                    title={track.ads_enabled === false ? 'Ads on karein' : 'Ads off karein'}
+                    style={{
+                      background: track.ads_enabled === false ? 'transparent' : 'rgba(22,163,74,.1)',
+                      border: `1px solid ${track.ads_enabled === false ? 'var(--divider)' : 'rgba(22,163,74,.25)'}`,
+                      color: track.ads_enabled === false ? 'var(--grey)' : 'var(--emerald-light)',
+                      borderRadius: 8,
+                      padding: '7px 10px',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {track.ads_enabled === false ? '🔇' : '🔊'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleEdit(track)}
