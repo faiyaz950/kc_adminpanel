@@ -9,6 +9,24 @@ const SortIcon     = () => <svg width="12" height="12" viewBox="0 0 24 24" fill=
 const SortUpIcon   = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="18 15 12 9 6 15"/></svg>;
 
 const CACHE_KEY = 'kc_analytics_v1';
+const USER_CACHE_KEY = 'kc_analytics_users_v1';
+
+const REGISTERED_COLOR = '#06B6D4';
+const GUEST_COLOR = '#F97316';
+
+function formatShortDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr.replace(' ', 'T'));
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ', ' +
+    d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
 
 const TABS = [
   { key: 'all',           label: 'All',          color: '#22C55E' },
@@ -86,6 +104,107 @@ function TrackRow({ rank, item }) {
   );
 }
 
+function LegendDot({ color, label }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+      <span style={{ width: 9, height: 9, borderRadius: 3, background: color, display: 'inline-block' }} />
+      {label}
+    </span>
+  );
+}
+
+function DailyPlaysChart({ dailyPlays }) {
+  const max = Math.max(1, ...dailyPlays.map(d => d.total));
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+      borderRadius: 16, padding: '18px 20px 14px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Pichle 14 din — plays (registered vs guest)</span>
+        <div style={{ display: 'flex', gap: 14 }}>
+          <LegendDot color={REGISTERED_COLOR} label="Registered" />
+          <LegendDot color={GUEST_COLOR} label="Guest" />
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 140 }}>
+        {dailyPlays.map(d => {
+          const total = d.total || 0;
+          const regH = total ? (d.registered / max) * 120 : 0;
+          const guestH = total ? (d.guest / max) * 120 : 0;
+          return (
+            <div
+              key={d.date}
+              title={`${formatShortDate(d.date)} — ${total} plays (${d.registered} registered, ${d.guest} guest)`}
+              style={{ flex: '1 1 0', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', height: '100%', cursor: 'default' }}
+            >
+              <div style={{ width: '100%', maxWidth: 22, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: 120 }}>
+                {regH > 0 && (
+                  <div style={{
+                    width: '100%', height: regH, background: REGISTERED_COLOR,
+                    borderRadius: guestH > 0 ? '0 0 2px 2px' : '4px 4px 2px 2px',
+                  }} />
+                )}
+                {guestH > 0 && (
+                  <div style={{
+                    width: '100%', height: guestH, background: GUEST_COLOR,
+                    borderRadius: '4px 4px 0 0', marginBottom: regH > 0 ? 2 : 0,
+                  }} />
+                )}
+                {total === 0 && <div style={{ width: '100%', height: 2, background: 'rgba(255,255,255,0.08)', borderRadius: 2 }} />}
+              </div>
+              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 6, whiteSpace: 'nowrap' }}>
+                {formatShortDate(d.date)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TopUserRow({ rank, user }) {
+  const initial = (user.name || user.email || '?')[0]?.toUpperCase() || '?';
+  return (
+    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <td style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.3)', fontSize: 12, fontWeight: 700, width: 40 }}>
+        {rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}
+      </td>
+      <td style={{ padding: '10px 8px', width: 44 }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: '50%',
+          background: 'linear-gradient(135deg, rgba(212,168,67,.2), rgba(212,168,67,.05))',
+          border: '1px solid rgba(212,168,67,.3)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', color: '#D4A843', fontWeight: 800, fontSize: 13,
+        }}>
+          {initial}
+        </div>
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{user.name || 'N/A'}</div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{user.email}</div>
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {user.favorite_track || '—'}
+        </div>
+        {user.favorite_track && (
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{user.favorite_track_plays}x played</div>
+        )}
+      </td>
+      <td style={{ padding: '10px 12px', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+        {formatDateTime(user.last_played_at)}
+      </td>
+      <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: REGISTERED_COLOR, fontWeight: 800, fontSize: 14 }}>
+          <PlayIcon />{formatCount(user.play_count)}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
 export default function TrackAnalytics() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
@@ -93,6 +212,10 @@ export default function TrackAnalytics() {
   const [tab, setTab]         = useState('all');
   const [search, setSearch]   = useState('');
   const [sort, setSort]       = useState('plays_desc');
+
+  const [userStats, setUserStats]         = useState(null);
+  const [userStatsLoading, setUserStatsLoading] = useState(true);
+  const [userStatsError, setUserStatsError]     = useState('');
 
   const readCache = () => {
     try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch { return null; }
@@ -119,7 +242,29 @@ export default function TrackAnalytics() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const fetchUserStats = async () => {
+    try {
+      const cached = JSON.parse(localStorage.getItem(USER_CACHE_KEY));
+      if (cached) setUserStats(cached);
+    } catch { /* ignore cache read errors */ }
+    setUserStatsLoading(true);
+    setUserStatsError('');
+    try {
+      const r = await client.get('/admin/analytics/users');
+      setUserStats(r.data);
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(r.data));
+    } catch (err) {
+      const status = err?.response?.status;
+      setUserStatsError(
+        status === 401 || status === 403 ? 'Session expire ho gaya — dobara login karein.' :
+        `User analytics load nahi hui (${status ?? 'network'})`
+      );
+    } finally {
+      setUserStatsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); fetchUserStats(); }, []);
 
   const allItems = useMemo(() => {
     if (!data) return [];
@@ -166,7 +311,7 @@ export default function TrackAnalytics() {
           </p>
         </div>
         <button
-          onClick={fetchData}
+          onClick={() => { fetchData(); fetchUserStats(); }}
           disabled={loading}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 7,
@@ -297,6 +442,81 @@ export default function TrackAnalytics() {
           {filtered.length} tracks — {tab === 'all' ? 'Saari categories' : TABS.find(t => t.key === tab)?.label}
         </p>
       )}
+
+      {/* User Play Insights */}
+      <div style={{ marginTop: 44 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 900, color: '#fff', margin: '0 0 4px', letterSpacing: '-.3px' }}>
+          User Play Insights
+        </h2>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '0 0 18px' }}>
+          Kitne users ne play kiya, kaun sabse zyada active hai, aur guest vs registered split
+        </p>
+
+        {userStatsError && <ErrorBanner message={userStatsError} />}
+
+        {userStatsLoading && !userStats ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+            Loading user insights...
+          </div>
+        ) : userStats && userStats.total_tracked_plays === 0 ? (
+          <div style={{
+            padding: 32, textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: 13,
+            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16,
+          }}>
+            Abhi tak koi tracked play nahi hai — yeh naya feature hai, jaise-jaise app use hoga yahan data dikhega.
+          </div>
+        ) : userStats ? (
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+              <StatCard label="Users Played" value={userStats.users_played} color="#8B5CF6" />
+              <StatCard label="Registered Plays" value={userStats.registered_plays} color={REGISTERED_COLOR} />
+              <StatCard label="Guest Plays" value={userStats.guest_plays} color={GUEST_COLOR} />
+              <StatCard label="Total Tracked Plays" value={userStats.total_tracked_plays} color="#22C55E" />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <DailyPlaysChart dailyPlays={userStats.daily_plays || []} />
+            </div>
+
+            <div style={{
+              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 16, overflow: 'hidden',
+            }}>
+              {(userStats.top_users || []).length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+                  Abhi tak kisi registered user ne track play nahi ki
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.08em', textTransform: 'uppercase' }}>#</th>
+                        <th style={{ padding: '10px 8px', width: 44 }}></th>
+                        <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.08em', textTransform: 'uppercase' }}>User</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Favorite Track</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Last Played</th>
+                        <th style={{ padding: '10px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: REGISTERED_COLOR, letterSpacing: '.08em', textTransform: 'uppercase' }}>Plays</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {userStats.top_users.map((u, idx) => (
+                        <TopUserRow key={u.user_id} rank={idx + 1} user={u} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {userStats.tracking_since && (
+              <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 11, marginTop: 14 }}>
+                Tracking start: {formatDateTime(userStats.tracking_since)} se — is se pehle ke plays record nahi hain
+              </p>
+            )}
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

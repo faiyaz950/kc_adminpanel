@@ -3,11 +3,12 @@ import client from '../api/client';
 import ErrorBanner from '../components/ErrorBanner';
 
 const USERS_CACHE_KEY = 'kc_admin_users_v1';
+const STATS_CACHE_KEY = 'kc_admin_users_stats_v1';
 const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 
-const readUsersCache = () => {
+const readCache = (key) => {
   try {
-    const raw = localStorage.getItem(USERS_CACHE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const { data, ts } = JSON.parse(raw);
     if (Date.now() - ts > CACHE_TTL_MS) return null;
@@ -15,15 +16,20 @@ const readUsersCache = () => {
   } catch { return null; }
 };
 
-const writeUsersCache = (data) => {
-  try { localStorage.setItem(USERS_CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
+const writeCache = (key, data) => {
+  try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
 };
+
+const readUsersCache = () => readCache(USERS_CACHE_KEY);
+const writeUsersCache = (data) => writeCache(USERS_CACHE_KEY, data);
 
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [fetchError, setFetchError] = useState('');
+  const [stats, setStats] = useState(() => readCache(STATS_CACHE_KEY));
+  const [statsLoading, setStatsLoading] = useState(!stats);
 
   const fetchUsers = (force = false) => {
     if (!force) {
@@ -52,7 +58,26 @@ export default function Users() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  const fetchStats = (force = false) => {
+    if (!force) {
+      const cached = readCache(STATS_CACHE_KEY);
+      if (cached) {
+        setStats(cached);
+        setStatsLoading(false);
+        return;
+      }
+    }
+    setStatsLoading(true);
+    client.get('/users/stats')
+      .then(r => {
+        setStats(r.data);
+        writeCache(STATS_CACHE_KEY, r.data);
+      })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
+  };
+
+  useEffect(() => { fetchUsers(); fetchStats(); }, []);
 
   const filtered = users.filter(u =>
     u.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -81,7 +106,7 @@ export default function Users() {
           />
         </div>
           <button
-            onClick={() => fetchUsers(true)}
+            onClick={() => { fetchUsers(true); fetchStats(true); }}
             disabled={loading}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
@@ -104,9 +129,22 @@ export default function Users() {
 
       {/* Stats bar */}
       <div style={statsRow}>
-        <StatPill label="Total" value={users.length} color="var(--gold)" bg="rgba(212,168,67,.1)" border="rgba(212,168,67,.25)" />
+        <StatPill label="Registered" value={users.length} color="var(--gold)" bg="rgba(212,168,67,.1)" border="rgba(212,168,67,.25)" />
         <StatPill label="Filtered" value={filtered.length} color="var(--emerald-light)" bg="rgba(22,163,74,.1)" border="rgba(22,163,74,.25)" />
+        <StatPill
+          label="Guest (Not Registered)"
+          value={statsLoading ? '…' : (stats?.guest_users ?? '—')}
+          color="var(--blue, #3b82f6)" bg="rgba(59,130,246,.1)" border="rgba(59,130,246,.25)"
+        />
+        <StatPill
+          label="Total App Installs"
+          value={statsLoading ? '…' : (stats?.total_installs ?? '—')}
+          color="var(--red)" bg="rgba(239,68,68,.1)" border="rgba(239,68,68,.25)"
+        />
       </div>
+      <p style={{ fontSize: 11, color: 'var(--grey-dark)', margin: '-12px 0 20px' }}>
+        Guest aur installs FCM device-token se estimate hote hain (approx) — app open karne par record hota hai, chahe login ho ya na ho.
+      </p>
 
       {loading ? (
         <TableSkeleton />
