@@ -29,6 +29,7 @@ const OldNauha      = lazy(() => import('./pages/OldNauha'));
 const Podcasts      = lazy(() => import('./pages/Podcasts'));
 const TrackAnalytics = lazy(() => import('./pages/TrackAnalytics'));
 const UserInsights   = lazy(() => import('./pages/UserInsights'));
+const LyricsSync     = lazy(() => import('./pages/LyricsSync'));
 
 function PageLoader() {
   return (
@@ -196,6 +197,7 @@ export default function App() {
                 <Route path="/podcasts"        element={<Podcasts />} />
                 <Route path="/track-analytics" element={<TrackAnalytics />} />
                 <Route path="/user-insights"   element={<UserInsights />} />
+                <Route path="/lyrics-sync"     element={<LyricsSync />} />
                 <Route path="*"              element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
