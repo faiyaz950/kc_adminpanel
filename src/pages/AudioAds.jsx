@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import client from '../api/client';
 
-const emptyForm = { title: '', type: 'audio', advertiser_name: '', is_active: true, weight: 1 };
+const emptyForm = { title: '', type: 'audio', advertiser_name: '', link_url: '', is_active: true, weight: 1 };
 
 export default function AudioAds() {
   const [ads, setAds]           = useState([]);
@@ -75,6 +75,7 @@ export default function AudioAds() {
       title: a.title || '',
       type: a.type || 'audio',
       advertiser_name: a.advertiser_name || '',
+      link_url: a.link_url || '',
       is_active: a.is_active,
       weight: a.weight || 1,
     });
@@ -97,6 +98,7 @@ export default function AudioAds() {
       if (form.title)           fd.append('title', form.title);
       fd.append('type', form.type);
       if (form.advertiser_name) fd.append('advertiser_name', form.advertiser_name);
+      fd.append('link_url', form.link_url.trim());
       fd.append('is_active', form.is_active ? '1' : '0');
       fd.append('weight', String(form.weight));
       if (mediaFile) fd.append(form.type === 'video' ? 'video' : 'audio', mediaFile);
@@ -342,6 +344,19 @@ export default function AudioAds() {
 
           <div style={{ marginBottom: 16 }}>
             <label style={{ color: 'var(--grey)', fontSize: 11, fontWeight: 700, letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
+              LINK (optional) <span style={{ color: 'var(--grey-dark)', fontWeight: 500, letterSpacing: 0 }}>— user tap kare to yeh URL khulega</span>
+            </label>
+            <input
+              style={inputStyle}
+              type="url"
+              placeholder="https://example.com"
+              value={form.link_url}
+              onChange={e => setForm(f => ({ ...f, link_url: e.target.value }))}
+            />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ color: 'var(--grey)', fontSize: 11, fontWeight: 700, letterSpacing: '0.8px', display: 'block', marginBottom: 6 }}>
               IMAGE (optional) <span style={{ color: 'var(--grey-dark)', fontWeight: 500, letterSpacing: 0 }}>— shown while ad plays{form.type === 'video' ? ' in mini player' : ''}</span>
             </label>
             <input
@@ -474,6 +489,16 @@ export default function AudioAds() {
                   <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>Weight: {a.weight}</span>
                   <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>Duration: {formatDuration(a.duration)}</span>
                   <span style={{ color: 'var(--grey-dark)', fontSize: 11 }}>Plays: {a.play_count}</span>
+                  {a.link_url && (
+                    <a
+                      href={a.link_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--emerald-light)', fontSize: 11, textDecoration: 'none' }}
+                    >
+                      🔗 Link
+                    </a>
+                  )}
                 </div>
               </div>
 
