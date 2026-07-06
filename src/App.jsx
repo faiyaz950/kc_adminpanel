@@ -28,6 +28,7 @@ const OldNauhakhwans = lazy(() => import('./pages/OldNauhakhwans'));
 const OldNauha      = lazy(() => import('./pages/OldNauha'));
 const Podcasts      = lazy(() => import('./pages/Podcasts'));
 const TrackAnalytics = lazy(() => import('./pages/TrackAnalytics'));
+const UserInsights   = lazy(() => import('./pages/UserInsights'));
 
 function PageLoader() {
   return (
@@ -194,6 +195,7 @@ export default function App() {
                 <Route path="/old-nauha"      element={<OldNauha />} />
                 <Route path="/podcasts"        element={<Podcasts />} />
                 <Route path="/track-analytics" element={<TrackAnalytics />} />
+                <Route path="/user-insights"   element={<UserInsights />} />
                 <Route path="*"              element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
