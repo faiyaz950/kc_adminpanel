@@ -107,6 +107,47 @@ function DailyPlaysChart({ dailyPlays }) {
   );
 }
 
+function TopGuestRow({ rank, guest }) {
+  const shortId = guest.device_id ? guest.device_id.slice(0, 8) : '—';
+  return (
+    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <td style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.3)', fontSize: 12, fontWeight: 700, width: 40 }}>
+        {rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}
+      </td>
+      <td style={{ padding: '10px 8px', width: 44 }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: '50%',
+          background: 'linear-gradient(135deg, rgba(249,115,22,.2), rgba(249,115,22,.05))',
+          border: '1px solid rgba(249,115,22,.3)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', color: GUEST_COLOR, fontWeight: 800, fontSize: 13,
+        }}>
+          👤
+        </div>
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Guest</div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>device: {shortId}…</div>
+      </td>
+      <td style={{ padding: '10px 12px' }}>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {guest.favorite_track || '—'}
+        </div>
+        {guest.favorite_track && (
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{guest.favorite_track_plays}x played</div>
+        )}
+      </td>
+      <td style={{ padding: '10px 12px', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+        {formatDateTime(guest.last_played_at)}
+      </td>
+      <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: GUEST_COLOR, fontWeight: 800, fontSize: 14 }}>
+          <PlayIcon />{formatCount(guest.play_count)}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
 function TopUserRow({ rank, user }) {
   const initial = (user.name || user.email || '?')[0]?.toUpperCase() || '?';
   return (
@@ -221,6 +262,7 @@ export default function UserInsights() {
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
             <StatCard label="Users Played" value={userStats.users_played} color="#8B5CF6" />
+            <StatCard label="Guest Users" value={userStats.guest_devices_played} color={GUEST_COLOR} />
             <StatCard label="Registered Plays" value={userStats.registered_plays} color={REGISTERED_COLOR} />
             <StatCard label="Guest Plays" value={userStats.guest_plays} color={GUEST_COLOR} />
             <StatCard label="Total Tracked Plays" value={userStats.total_tracked_plays} color="#22C55E" />
@@ -230,9 +272,10 @@ export default function UserInsights() {
             <DailyPlaysChart dailyPlays={userStats.daily_plays || []} />
           </div>
 
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 10 }}>Top Registered Users</div>
           <div style={{
             background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 16, overflow: 'hidden',
+            borderRadius: 16, overflow: 'hidden', marginBottom: 20,
           }}>
             {(userStats.top_users || []).length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
@@ -254,6 +297,38 @@ export default function UserInsights() {
                   <tbody>
                     {userStats.top_users.map((u, idx) => (
                       <TopUserRow key={u.user_id} rank={idx + 1} user={u} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 10 }}>Top Guest Users</div>
+          <div style={{
+            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 16, overflow: 'hidden',
+          }}>
+            {(userStats.top_guests || []).length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+                Abhi tak kisi guest ne track play nahi ki
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.08em', textTransform: 'uppercase' }}>#</th>
+                      <th style={{ padding: '10px 8px', width: 44 }}></th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Guest</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Favorite Track</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Last Played</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: GUEST_COLOR, letterSpacing: '.08em', textTransform: 'uppercase' }}>Plays</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userStats.top_guests.map((g, idx) => (
+                      <TopGuestRow key={g.device_id} rank={idx + 1} guest={g} />
                     ))}
                   </tbody>
                 </table>
