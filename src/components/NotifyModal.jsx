@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import client from '../api/client';
 import { formatApiError } from '../api/errors';
+import NotifyResultBanner from './NotifyResultBanner';
 
 const CAT_LABELS = {
   noha: 'Noha', dua: 'Dua', manqabat: 'Manqabat', marsiya: 'Marsiya',
@@ -25,7 +26,12 @@ export default function NotifyModal({ track, trackType, onClose }) {
         reciter:    track.reciter_name || track.anjuman_name || track.maulana_name || track.nauhakhwan_name || '',
         image_url:  track.image_url || '',
       });
-      setResult({ success: true, sent: res.data.sent ?? 0, failed: res.data.failed ?? 0 });
+      setResult({
+        success: true,
+        sent: res.data.sent ?? 0,
+        failed: res.data.failed ?? 0,
+        failures: res.data.failures ?? [],
+      });
     } catch (err) {
       setResult({ success: false, error: formatApiError(err, 'Notification send nahi hua.') });
     } finally {
@@ -70,20 +76,7 @@ export default function NotifyModal({ track, trackType, onClose }) {
           </div>
         </div>
 
-        {result && (
-          <div style={{
-            padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13,
-            background: result.success ? 'rgba(22,163,74,.12)' : 'rgba(239,68,68,.12)',
-            color: result.success ? 'var(--emerald-light)' : '#f87171',
-            border: `1px solid ${result.success ? 'rgba(22,163,74,.3)' : 'rgba(239,68,68,.3)'}`,
-          }}>
-            {result.success
-              ? result.sent === 0
-                ? '⚠️ Koi user registered nahi hai abhi — jab users naya app install karenge tab FCM token save hoga.'
-                : `✅ ${result.sent} users ko notification gayi!${result.failed > 0 ? ` (${result.failed} failed)` : ''}`
-              : `❌ ${result.error}`}
-          </div>
-        )}
+        <NotifyResultBanner result={result} />
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button type="button" className="btn-cancel" onClick={onClose} disabled={sending}>

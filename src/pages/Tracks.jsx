@@ -12,6 +12,7 @@ import SearchInput from '../components/SearchInput';
 import AudioProcessor from '../components/AudioProcessor';
 import YoutubeConverter from '../components/YoutubeConverter';
 import { StorageBadges } from '../components/StorageBadge';
+import NotifyResultBanner from '../components/NotifyResultBanner';
 
 const CATEGORIES = ['dua', 'noha', 'manqabat', 'naat', 'ziyarat', 'kids', 'tarana', 'marsiya', 'soz', 'salam'];
 const LANGUAGES = {
@@ -223,7 +224,12 @@ export default function Tracks() {
         reciter:    notifyTrack.reciter_name || '',
         image_url:  notifyTrack.image_url || '',
       });
-      setNotifyResult({ success: true, sent: res.data.sent ?? 0, failed: res.data.failed ?? 0 });
+      setNotifyResult({
+        success: true,
+        sent: res.data.sent ?? 0,
+        failed: res.data.failed ?? 0,
+        failures: res.data.failures ?? [],
+      });
     } catch (err) {
       setNotifyResult({ success: false, error: formatApiError(err, 'Notification send nahi hua.') });
     } finally {
@@ -668,20 +674,7 @@ export default function Tracks() {
               </div>
             </div>
 
-            {notifyResult && (
-              <div style={{
-                padding: '10px 14px', borderRadius: 10, marginBottom: 16, fontSize: 13,
-                background: notifyResult.success ? 'rgba(22,163,74,.12)' : 'rgba(239,68,68,.12)',
-                color: notifyResult.success ? 'var(--emerald-light)' : '#f87171',
-                border: `1px solid ${notifyResult.success ? 'rgba(22,163,74,.3)' : 'rgba(239,68,68,.3)'}`,
-              }}>
-                {notifyResult.success
-                  ? notifyResult.sent === 0
-                    ? `⚠️ Koi user registered nahi hai abhi — jab users naya app install karenge tab FCM token save hoga.`
-                    : `✅ ${notifyResult.sent} users ko notification gayi!${notifyResult.failed > 0 ? ` (${notifyResult.failed} failed)` : ''}`
-                  : `❌ ${notifyResult.error}`}
-              </div>
-            )}
+            <NotifyResultBanner result={notifyResult} />
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
