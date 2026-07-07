@@ -275,7 +275,8 @@ export default function Tracks() {
     if (!q) return true;
     return (
       t.title?.toLowerCase().includes(q) ||
-      t.reciter_name?.toLowerCase().includes(q)
+      t.reciter_name?.toLowerCase().includes(q) ||
+      String(t.id) === q.replace(/^#/, '')
     );
   });
 
@@ -599,7 +600,7 @@ export default function Tracks() {
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Cover', 'Title', 'Category', 'Reciter', 'Language', 'Year', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => (
+                  {['Cover', 'ID', 'Title', 'Category', 'Reciter', 'Language', 'Year', 'Plays', 'Featured', 'Storage', 'Preview', 'Actions'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -782,6 +783,15 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
     <>
       <tr>
         <td><TrackCover track={track} cm={cm} /></td>
+        <td>
+          <span style={{
+            color: 'var(--grey-light)', fontSize: 12, fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums', background: 'var(--bg-surface)',
+            border: '1px solid var(--divider)', borderRadius: 6, padding: '2px 7px',
+          }}>
+            #{track.id}
+          </span>
+        </td>
         <td><span style={{ color: 'var(--white)', fontWeight: 600, fontSize: 13 }}>{track.title}</span></td>
         <td><CategoryBadge category={track.category} cm={cm} /></td>
         <td style={{ color: 'var(--grey-light)', fontSize: 13 }}>{track.reciter_name || '—'}</td>
@@ -817,7 +827,7 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
       </tr>
       {previewTrackId === track.id && (
         <tr>
-          <td colSpan={10} style={{ background: 'var(--bg-surface)', padding: '10px 16px' }}>
+          <td colSpan={12} style={{ background: 'var(--bg-surface)', padding: '10px 16px' }}>
             <audio controls autoPlay src={track.audio_url} style={{ width: '100%', height: 36, accentColor: 'var(--gold)' }} />
           </td>
         </tr>
@@ -836,7 +846,7 @@ function TrackCard({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete,
         <TrackCover track={track} cm={cm} size={52} />
         <div className="track-card-body">
           <div className="track-card-title">{track.title}</div>
-          <div className="track-card-meta">{track.reciter_name || '—'}</div>
+          <div className="track-card-meta">#{track.id} · {track.reciter_name || '—'}</div>
           <div className="track-card-tags">
             <CategoryBadge category={track.category} cm={cm} />
             <PlayCountBadge count={track.play_count} />
