@@ -30,6 +30,7 @@ const Podcasts      = lazy(() => import('./pages/Podcasts'));
 const TrackAnalytics = lazy(() => import('./pages/TrackAnalytics'));
 const UserInsights   = lazy(() => import('./pages/UserInsights'));
 const LyricsSync     = lazy(() => import('./pages/LyricsSync'));
+const TrackComments  = lazy(() => import('./pages/TrackComments'));
 
 function PageLoader() {
   return (
@@ -198,6 +199,7 @@ export default function App() {
                 <Route path="/track-analytics" element={<TrackAnalytics />} />
                 <Route path="/user-insights"   element={<UserInsights />} />
                 <Route path="/lyrics-sync"     element={<LyricsSync />} />
+                <Route path="/track-comments"  element={<TrackComments />} />
                 <Route path="*"              element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
