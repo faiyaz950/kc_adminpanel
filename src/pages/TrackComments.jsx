@@ -134,6 +134,7 @@ export default function TrackComments() {
                       {comment.track_title || comment.track_id}
                     </div>
                     <div style={metaGrid}>
+                      <MetaBlock label="Track title" value={comment.track_title || comment.track_id} />
                       <MetaBlock label="User email" value={comment.user?.email || 'No email'} />
                       <MetaBlock label="Commented at" value={formatDateTime(comment.created_at)} />
                       <MetaBlock label="Track ID" value={comment.track_id} />
