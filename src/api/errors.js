@@ -15,6 +15,7 @@ export function formatApiError(err, fallback = 'Request failed.') {
     if (lines.length) return lines.join(' ');
   }
   if (data?.message) return data.message;
+  if (data?.error) return typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
 
   if (status === 413) {
     return 'File bahut bari hai. Audio ~100MB se chhoti rakhein ya compress karein.';
