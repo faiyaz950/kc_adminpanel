@@ -450,6 +450,10 @@ export default function AudioProcessor({ file, onProcessed }) {
     setStartR(s); setEndR(e);
   }, []);
 
+  const trimmedSec = trimOn && duration > 0 ? Math.max(0, (endR - startR) * duration) : 0;
+  const trimmedEstMb = trimmedSec > 0 ? (trimmedSec * (compressOn ? parseInt(bitrate, 10) : 320)) / 8 / 1024 / 1024 : 0;
+  const needsCompressWarning = trimOn && trimmedSec > 600 && !compressOn;
+
   const handleProcess = async () => {
     if (!compressOn && !trimOn) { setError('Compress ya Trim — koi ek option zaroori hai.'); return; }
     const startSec = trimOn ? startR * duration : 0;
@@ -569,6 +573,12 @@ export default function AudioProcessor({ file, onProcessed }) {
                   onChange={handleChange}
                 />
               ) : null}
+              {needsCompressWarning && (
+                <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 8, fontSize: 12, lineHeight: 1.5, color: '#F97316', background: 'rgba(249,115,22,.1)', border: '1px solid rgba(249,115,22,.25)' }}>
+                  Lamba clip (~{formatTime(trimmedSec)}, ~{trimmedEstMb.toFixed(0)}MB bina compress) — upload fail ho sakta hai.
+                  Upar <strong>Compress</strong> ON karein (128 kbps recommended).
+                </div>
+              )}
             </div>
           )}
 

@@ -77,6 +77,15 @@ const TRACK_YEARS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURREN
 
 const emptyForm = { title: '', category: 'dua', reciter_id: '', reciter_name: '', language: defaultLanguage('dua'), occasion: '', year: '', is_featured: false, lyrics: '', ads_enabled: true };
 
+const MAX_AUDIO_BYTES = 48 * 1024 * 1024;
+
+const trackMatchesUpload = (track, { title, category, reciter_id }) => {
+  if (!track || track.title !== title) return false;
+  if (category && track.category !== category) return false;
+  if (reciter_id && String(track.reciter_id ?? '') !== String(reciter_id)) return false;
+  return true;
+};
+
 export default function Tracks() {
   const [tracks, setTracks] = useState([]);
   const [reciters, setReciters] = useState([]);
@@ -162,11 +171,17 @@ export default function Tracks() {
       setSaveError('Naya track ke liye MP3 / audio file zaroori hai.');
       return;
     }
+    if (audioFile && audioFile.size > MAX_AUDIO_BYTES) {
+      const mb = (audioFile.size / (1024 * 1024)).toFixed(1);
+      setSaveError(`Audio file ${mb}MB hai — server limit ~48MB hai. Audio Processor mein Compress ON karein (128 kbps recommended), phir dubara try karein.`);
+      return;
+    }
     const language = resolveLanguage(form.category, form.language);
     if (!language) {
       setSaveError('Language select karein.');
       return;
     }
+    const uploadMeta = { title: form.title, category: form.category, reciter_id: form.reciter_id };
     setSaving(true); setSaveError('');
     try {
       const fd = new FormData();
@@ -181,6 +196,17 @@ export default function Tracks() {
       resetForm(); fetchTracks(true);
     } catch (err) {
       console.error('[tracks save]', err.response?.status, err.response?.data || err.message);
+      try {
+        const data = await loadBootstrap();
+        applyTracksPayload(data.tracks, data.reciters);
+        writeBootstrap(data.tracks, data.reciters);
+        if (!editId && sanitizeList(data.tracks).some(t => trackMatchesUpload(t, uploadMeta))) {
+          resetForm();
+          return;
+        }
+      } catch {
+        // Keep the original upload error below.
+      }
       setSaveError(formatApiError(err, 'Track save nahi hua.'));
     } finally { setSaving(false); }
   };
