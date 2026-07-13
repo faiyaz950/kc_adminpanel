@@ -391,6 +391,17 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
     }
   };
 
+  const toggleAds = async (t) => {
+    try {
+      const fd = new FormData();
+      fd.append('ads_enabled', t.ads_enabled === false ? '1' : '0');
+      await client.post(`/anjuman-tracks/${t.id}`, fd);
+      fetchTracks();
+    } catch (err) {
+      alert(formatApiError(err, 'Ads setting update nahi hua.'));
+    }
+  };
+
   return (
     <div className="page-wrapper">
       <div className="page-header">
@@ -573,7 +584,7 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
           <table className="data-table">
             <thead>
               <tr>
-                {['#', 'Cover + Title', 'Occasion', 'Duration', 'Plays', 'Featured', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}
+                {['#', 'Cover + Title', 'Occasion', 'Duration', 'Plays', 'Featured', 'Storage', 'Ads', 'Preview', 'Actions'].map(h => <th key={h}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -618,6 +629,21 @@ function AnjumanTracks({ anjuman, onBack, onAnjumanUpdated }) {
                   </td>
                   <td>
                     <StorageBadges imageUrl={t.image_url} audioUrl={t.audio_url} />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="tbl-btn"
+                      onClick={() => toggleAds(t)}
+                      title={t.ads_enabled === false ? 'Ads on karein' : 'Ads off karein'}
+                      style={{
+                        color: t.ads_enabled === false ? 'var(--grey)' : 'var(--emerald-light)',
+                        borderColor: t.ads_enabled === false ? 'var(--divider)' : 'rgba(22,163,74,.35)',
+                        background: t.ads_enabled === false ? 'transparent' : 'rgba(22,163,74,.12)',
+                      }}
+                    >
+                      {t.ads_enabled === false ? '🔇 Off' : '🔊 On'}
+                    </button>
                   </td>
                   <td>
                     <button className="tbl-btn tbl-btn-play" onClick={() => setPlaying(playing === t.audio_url ? null : t.audio_url)}>

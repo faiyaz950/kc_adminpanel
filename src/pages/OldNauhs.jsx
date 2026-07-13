@@ -26,6 +26,13 @@ export default function OldNauhs() {
   const [deleteId, setDeleteId]     = useState(null);
   const [notifyTrack, setNotifyTrack] = useState(null);
 
+  // reorder
+  const [orderDirty, setOrderDirty] = useState(false);
+  const [orderSaving, setOrderSaving] = useState(false);
+  const [orderSaveMsg, setOrderSaveMsg] = useState('');
+  const dragIndex = useRef(null);
+  const [dragOver, setDragOver] = useState(null);
+
   // form
   const [title, setTitle]           = useState('');
   const [oldNauhakhwanId, setOldNauhakhwanId] = useState('');
@@ -198,6 +205,58 @@ export default function OldNauhs() {
     }
   }
 
+  async function toggleAds(track) {
+    try {
+      const fd = new FormData();
+      fd.append('ads_enabled', track.ads_enabled === false ? '1' : '0');
+      await client.post(`/old-nauhs/${track.id}`, fd);
+      fetchTracks();
+    } catch (e) {
+      alert(formatApiError(e, 'Ads setting update nahi hua.'));
+    }
+  }
+
+  function moveTrack(from, to) {
+    if (from === to) return;
+    setTracks(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+    setOrderDirty(true);
+  }
+
+  const moveUp = (i) => { if (i > 0) moveTrack(i, i - 1); };
+  const moveDown = (i) => { if (i < tracks.length - 1) moveTrack(i, i + 1); };
+
+  const onDragStart = (i) => { dragIndex.current = i; };
+  const onDragOver = (e, i) => {
+    e.preventDefault();
+    if (dragIndex.current !== i) setDragOver(i);
+  };
+  const onDrop = (i) => {
+    moveTrack(dragIndex.current, i);
+    dragIndex.current = null;
+    setDragOver(null);
+  };
+  const onDragEnd = () => { dragIndex.current = null; setDragOver(null); };
+
+  async function handleSaveOrder() {
+    setOrderSaving(true); setOrderSaveMsg('');
+    try {
+      const items = tracks.map((t, i) => ({ id: t.id, order: i + 1 }));
+      await client.post('/old-nauhs/reorder', { items });
+      setOrderSaveMsg('✓ Order save ho gaya!');
+      setOrderDirty(false);
+      setTimeout(() => setOrderSaveMsg(''), 3000);
+    } catch (err) {
+      setOrderSaveMsg(`Error: ${formatApiError(err, 'Order save nahi hua.')}`);
+    } finally {
+      setOrderSaving(false);
+    }
+  }
+
   const audioPlayerSrc = audioPreviewUrl || existingAudioUrl;
   const coverPreview = imagePreviewUrl || existingImageUrl;
 
@@ -245,6 +304,48 @@ export default function OldNauhs() {
       </div>
 
       <ErrorBanner message={error} />
+
+      {/* ── Reorder hint + save bar ── */}
+      {!loading && tracks.length > 1 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,
+          padding: '12px 16px', marginBottom: 16,
+          background: 'rgba(212,168,67,.07)', border: '1px solid rgba(212,168,67,.2)', borderRadius: 10,
+        }}>
+          <span style={{ fontSize: 12, color: 'var(--grey-light)' }}>
+            <b style={{ color: 'var(--gold)' }}>Drag</b> karein ya <b style={{ color: 'var(--gold)' }}>↑ ↓ arrows</b> use karein order change karne ke liye.
+            Jo sabse upar hai wo app ke home screen par sabse pehle dikhega.
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {orderSaveMsg && (
+              <span style={{
+                fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 20,
+                background: orderSaveMsg.startsWith('Error') ? 'rgba(239,68,68,.12)' : 'rgba(16,185,129,.12)',
+                color: orderSaveMsg.startsWith('Error') ? '#EF4444' : '#10B981',
+                border: `1px solid ${orderSaveMsg.startsWith('Error') ? 'rgba(239,68,68,.3)' : 'rgba(16,185,129,.3)'}`,
+              }}>
+                {orderSaveMsg}
+              </span>
+            )}
+            {orderDirty && !orderSaving && (
+              <span style={{ fontSize: 11, color: 'var(--grey)', fontStyle: 'italic' }}>Unsaved changes</span>
+            )}
+            <button
+              onClick={handleSaveOrder}
+              disabled={orderSaving || !orderDirty}
+              style={{
+                padding: '8px 18px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                background: orderDirty ? 'var(--gold)' : 'var(--bg-surface)',
+                color: orderDirty ? '#000' : 'var(--grey-dark)',
+                border: `1px solid ${orderDirty ? 'var(--gold)' : 'var(--divider)'}`,
+                cursor: orderDirty ? 'pointer' : 'not-allowed', transition: 'all .15s',
+              }}
+            >
+              {orderSaving ? 'Saving...' : 'Save Order'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Add / Edit Form ── */}
       {showForm && (
@@ -462,16 +563,74 @@ export default function OldNauhs() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {tracks.map(track => {
+          {tracks.map((track, i) => {
             const cs = COUNTRY_STYLE[track.country] || COUNTRY_STYLE.India;
             const isEditing = editId === track.id;
+            const isDragOver = dragOver === i;
             return (
-              <div key={track.id} style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                background: isEditing ? 'rgba(239,68,68,.06)' : 'var(--bg-card)',
-                border: `1px solid ${isEditing ? 'rgba(239,68,68,.35)' : 'var(--divider)'}`,
-                borderRadius: 12, padding: '10px 14px',
-              }}>
+              <div
+                key={track.id}
+                draggable
+                onDragStart={() => onDragStart(i)}
+                onDragOver={(e) => onDragOver(e, i)}
+                onDrop={() => onDrop(i)}
+                onDragEnd={onDragEnd}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  background: isDragOver ? 'rgba(212,168,67,.08)' : isEditing ? 'rgba(239,68,68,.06)' : 'var(--bg-card)',
+                  border: `1px solid ${isDragOver ? 'rgba(212,168,67,.4)' : isEditing ? 'rgba(239,68,68,.35)' : 'var(--divider)'}`,
+                  borderRadius: 12, padding: '10px 14px',
+                  opacity: dragIndex.current === i ? 0.4 : 1,
+                  transition: 'border-color .1s, background .1s',
+                }}
+              >
+                {/* Drag handle */}
+                <div style={{ color: 'var(--grey-dark)', flexShrink: 0, cursor: 'grab', padding: '0 2px' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+                    <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                    <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+                  </svg>
+                </div>
+
+                {/* Position badge */}
+                <div style={{
+                  width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                  background: 'var(--bg-surface)', border: '1px solid var(--divider)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 800, color: 'var(--grey)',
+                }}>
+                  {i + 1}
+                </div>
+
+                {/* Up/Down arrows */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => moveUp(i)}
+                    disabled={i === 0}
+                    title="Upar le jao"
+                    style={{
+                      width: 22, height: 22, borderRadius: 6, border: '1px solid var(--divider)',
+                      background: 'var(--bg-surface)', color: i === 0 ? 'var(--grey-dark)' : 'var(--grey-light)',
+                      cursor: i === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10,
+                    }}
+                  >▲</button>
+                  <button
+                    type="button"
+                    onClick={() => moveDown(i)}
+                    disabled={i === tracks.length - 1}
+                    title="Neeche le jao"
+                    style={{
+                      width: 22, height: 22, borderRadius: 6, border: '1px solid var(--divider)',
+                      background: 'var(--bg-surface)', color: i === tracks.length - 1 ? 'var(--grey-dark)' : 'var(--grey-light)',
+                      cursor: i === tracks.length - 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10,
+                    }}
+                  >▼</button>
+                </div>
+
                 {/* Thumbnail */}
                 <div style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: 'rgba(239,68,68,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {track.image_url
@@ -512,6 +671,23 @@ export default function OldNauhs() {
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleAds(track)}
+                    title={track.ads_enabled === false ? 'Ads on karein' : 'Ads off karein'}
+                    style={{
+                      background: track.ads_enabled === false ? 'transparent' : 'rgba(22,163,74,.1)',
+                      border: `1px solid ${track.ads_enabled === false ? 'var(--divider)' : 'rgba(22,163,74,.25)'}`,
+                      color: track.ads_enabled === false ? 'var(--grey)' : 'var(--emerald-light)',
+                      borderRadius: 8,
+                      padding: '7px 10px',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {track.ads_enabled === false ? '🔇' : '🔊'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleEdit(track)}

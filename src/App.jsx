@@ -22,12 +22,16 @@ const Taqreer       = lazy(() => import('./pages/Taqreer'));
 const Users         = lazy(() => import('./pages/Users'));
 const Messages      = lazy(() => import('./pages/Messages'));
 const Popups        = lazy(() => import('./pages/Popups'));
+const AudioAds      = lazy(() => import('./pages/AudioAds'));
 const OldNauhs      = lazy(() => import('./pages/OldNauhs'));
 const OldNauhakhwans = lazy(() => import('./pages/OldNauhakhwans'));
 const OldNauha      = lazy(() => import('./pages/OldNauha'));
 const Podcasts      = lazy(() => import('./pages/Podcasts'));
 const Audiobooks    = lazy(() => import('./pages/Audiobooks'));
 const TrackAnalytics = lazy(() => import('./pages/TrackAnalytics'));
+const UserInsights   = lazy(() => import('./pages/UserInsights'));
+const LyricsSync     = lazy(() => import('./pages/LyricsSync'));
+const TrackComments  = lazy(() => import('./pages/TrackComments'));
 
 function PageLoader() {
   return (
@@ -188,12 +192,16 @@ export default function App() {
                 <Route path="/users"          element={<Users />} />
                 <Route path="/messages"       element={<Messages />} />
                 <Route path="/popups"         element={<Popups />} />
+                <Route path="/audio-ads"      element={<AudioAds />} />
                 <Route path="/old-nauhs"      element={<OldNauhs />} />
                 <Route path="/old-nauhakhwans" element={<OldNauhakhwans />} />
                 <Route path="/old-nauha"      element={<OldNauha />} />
                 <Route path="/podcasts"        element={<Podcasts />} />
                 <Route path="/audiobooks"      element={<Audiobooks />} />
                 <Route path="/track-analytics" element={<TrackAnalytics />} />
+                <Route path="/user-insights"   element={<UserInsights />} />
+                <Route path="/lyrics-sync"     element={<LyricsSync />} />
+                <Route path="/track-comments"  element={<TrackComments />} />
                 <Route path="*"              element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

@@ -12,7 +12,7 @@ const formatDur = (secs) => {
 };
 
 const emptyForm = {
-  title: '', ulema_id: '', host: '', description: '', is_published: true,
+  title: '', ulema_id: '', host: '', description: '', is_published: true, ads_enabled: true,
 };
 
 export default function Podcasts() {
@@ -102,6 +102,7 @@ export default function Podcasts() {
       host: p.host || '',
       description: p.description || '',
       is_published: p.is_published !== false,
+      ads_enabled: p.ads_enabled !== false,
     });
     setExistingAudioUrl(p.audio_url || null);
     setExistingImageUrl(p.image_url || null);
@@ -126,6 +127,7 @@ export default function Podcasts() {
       if (hostName)                fd.append('host', hostName);
       if (form.description.trim()) fd.append('description', form.description.trim());
       fd.append('is_published', form.is_published ? '1' : '0');
+      fd.append('ads_enabled', form.ads_enabled ? '1' : '0');
       if (finalAudio) fd.append('audio', finalAudio);
       if (imageFile)  fd.append('image', imageFile);
 
@@ -249,6 +251,11 @@ export default function Podcasts() {
             <label htmlFor="pub" style={{ ...s.label, cursor: 'pointer' }}>Published (visible in app)</label>
           </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+            <input type="checkbox" id="ads" checked={form.ads_enabled} onChange={e => setForm(f => ({ ...f, ads_enabled: e.target.checked }))} />
+            <label htmlFor="ads" style={{ ...s.label, cursor: 'pointer' }}>Play ads on this episode</label>
+          </div>
+
           {saveError && <p style={s.errMsg}>{saveError}</p>}
 
           <div style={s.row}>
@@ -276,6 +283,7 @@ export default function Podcasts() {
                 {p.duration && <span>⏱ {formatDur(p.duration)}</span>}
                 {p.play_count > 0 && <span>▶ {p.play_count}</span>}
                 <span style={s.badge(p.is_published)}>{p.is_published ? 'Published' : 'Draft'}</span>
+                <span style={s.badge(p.ads_enabled !== false)}>{p.ads_enabled !== false ? '🔊 Ads On' : '🔇 Ads Off'}</span>
               </div>
             </div>
             <button style={s.iconBtn} title="Edit" onClick={() => openEdit(p)}>✏️</button>
