@@ -10,8 +10,12 @@ const formatDur = (secs) => {
   return `${m}:${String(s).padStart(2, '0')}`;
 };
 
+const emptyTitleForm = {
+  title: '', description: '', sort_order: '0', is_published: true,
+};
+
 const emptyBookForm = {
-  title: '', author: '', description: '', sort_order: '0', is_published: true,
+  audiobook_title_id: '', title: '', author: '', description: '', sort_order: '0', is_published: true,
 };
 
 const emptyChapterForm = {
@@ -19,12 +23,24 @@ const emptyChapterForm = {
 };
 
 export default function Audiobooks() {
+  const [titles, setTitles] = useState([]);
+  const [selectedTitle, setSelectedTitle] = useState(null);
   const [books, setBooks] = useState([]);
   const [selectedBook, setSelectedBook] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chaptersLoading, setChaptersLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [showTitleForm, setShowTitleForm] = useState(false);
+  const [titleEditId, setTitleEditId] = useState(null);
+  const [titleForm, setTitleForm] = useState(emptyTitleForm);
+  const [titleSaving, setTitleSaving] = useState(false);
+  const [titleSaveError, setTitleSaveError] = useState('');
+  const [deleteTitleId, setDeleteTitleId] = useState(null);
+  const [titleCoverFile, setTitleCoverFile] = useState(null);
+  const [titleCoverPreview, setTitleCoverPreview] = useState(null);
+  const [existingTitleCover, setExistingTitleCover] = useState(null);
 
   const [showBookForm, setShowBookForm] = useState(false);
   const [bookEditId, setBookEditId] = useState(null);
@@ -48,24 +64,47 @@ export default function Audiobooks() {
   const [existingAudioUrl, setExistingAudioUrl] = useState(null);
 
   const coverRef = useRef();
+  const titleCoverRef = useRef();
   const audioRef = useRef();
   const bookFormRef = useRef();
+  const titleFormRef = useRef();
   const chapterFormRef = useRef();
 
-  useEffect(() => { fetchBooks(); }, []);
+  useEffect(() => { fetchTitles(); fetchBooks(); }, []);
 
   useEffect(() => () => {
     if (coverPreview?.startsWith('blob:')) URL.revokeObjectURL(coverPreview);
+    if (titleCoverPreview?.startsWith('blob:')) URL.revokeObjectURL(titleCoverPreview);
     if (audioPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(audioPreviewUrl);
-  }, [coverPreview, audioPreviewUrl]);
+  }, [coverPreview, titleCoverPreview, audioPreviewUrl]);
 
-  async function fetchBooks() {
+  async function fetchTitles() {
     setLoading(true); setError('');
     try {
-      const res = await client.get('/audiobooks');
-      setBooks(Array.isArray(res.data) ? res.data : []);
+      const res = await client.get('/audiobook-titles');
+      setTitles(Array.isArray(res.data) ? res.data : []);
     } catch (e) { setError(formatApiError(e)); }
     finally { setLoading(false); }
+  }
+
+  async function loadTitleBooks(title) {
+    setSelectedTitle(title);
+    setSelectedBook(null);
+    setChapters([]);
+    try {
+      const res = await client.get(`/audiobook-titles/${title.id}`);
+      setBooks(Array.isArray(res.data?.books) ? res.data.books : []);
+    } catch (e) {
+      setBooks([]);
+      alert(formatApiError(e));
+    }
+  }
+
+  async function fetchBooks() {
+    try {
+      const res = await client.get('/audiobooks');
+      if (!selectedTitle) setBooks(Array.isArray(res.data) ? res.data : []);
+    } catch (_) {}
   }
 
   async function loadChapters(book) {
@@ -80,6 +119,75 @@ export default function Audiobooks() {
     } finally { setChaptersLoading(false); }
   }
 
+  function resetTitleForm() {
+    setTitleForm(emptyTitleForm);
+    setTitleCoverFile(null);
+    setExistingTitleCover(null);
+    if (titleCoverPreview?.startsWith('blob:')) URL.revokeObjectURL(titleCoverPreview);
+    setTitleCoverPreview(null);
+    setTitleSaveError('');
+    setTitleEditId(null);
+  }
+
+  function openAddTitle() {
+    resetTitleForm();
+    setShowTitleForm(true);
+    setTimeout(() => titleFormRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
+  }
+
+  function openEditTitle(t) {
+    resetTitleForm();
+    setTitleEditId(t.id);
+    setTitleForm({
+      title: t.title || '',
+      description: t.description || '',
+      sort_order: String(t.sort_order ?? 0),
+      is_published: t.is_published !== false,
+    });
+    setExistingTitleCover(t.cover_image_url || null);
+    setShowTitleForm(true);
+    setTimeout(() => titleFormRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
+  }
+
+  function handleTitleCoverPick(e) {
+    const f = e.target.files[0]; if (!f) return;
+    setTitleCoverFile(f);
+    if (titleCoverPreview?.startsWith('blob:')) URL.revokeObjectURL(titleCoverPreview);
+    setTitleCoverPreview(URL.createObjectURL(f));
+  }
+
+  async function handleSaveTitle(e) {
+    e.preventDefault(); setTitleSaveError('');
+    if (!titleForm.title.trim()) { setTitleSaveError('Title name is required'); return; }
+    setTitleSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('title', titleForm.title.trim());
+      if (titleForm.description.trim()) fd.append('description', titleForm.description.trim());
+      fd.append('sort_order', titleForm.sort_order || '0');
+      fd.append('is_published', titleForm.is_published ? '1' : '0');
+      if (titleCoverFile) fd.append('cover', titleCoverFile);
+      if (titleEditId) await client.post(`/audiobook-titles/${titleEditId}`, fd);
+      else await client.post('/audiobook-titles', fd);
+      await fetchTitles();
+      resetTitleForm();
+      setShowTitleForm(false);
+    } catch (e) { setTitleSaveError(formatApiError(e)); }
+    finally { setTitleSaving(false); }
+  }
+
+  async function handleDeleteTitle(id) {
+    try {
+      await client.delete(`/audiobook-titles/${id}`);
+      setTitles(t => t.filter(x => x.id !== id));
+      if (selectedTitle?.id === id) {
+        setSelectedTitle(null);
+        setBooks([]);
+      }
+    } catch (e) { alert(formatApiError(e)); }
+    finally { setDeleteTitleId(null); }
+  }
+
   function resetBookForm() {
     setBookForm(emptyBookForm);
     setCoverFile(null);
@@ -91,7 +199,9 @@ export default function Audiobooks() {
   }
 
   function openAddBook() {
+    if (!selectedTitle) { alert('Pehle ek Title select karein'); return; }
     resetBookForm();
+    setBookForm(f => ({ ...f, audiobook_title_id: String(selectedTitle.id) }));
     setShowBookForm(true);
     setTimeout(() => bookFormRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
   }
@@ -100,6 +210,7 @@ export default function Audiobooks() {
     resetBookForm();
     setBookEditId(b.id);
     setBookForm({
+      audiobook_title_id: b.audiobook_title_id ? String(b.audiobook_title_id) : '',
       title: b.title || '',
       author: b.author || '',
       description: b.description || '',
@@ -119,6 +230,8 @@ export default function Audiobooks() {
     try {
       const fd = new FormData();
       fd.append('title', bookForm.title.trim());
+      if (bookForm.audiobook_title_id) fd.append('audiobook_title_id', bookForm.audiobook_title_id);
+      else fd.append('audiobook_title_id', '');
       if (bookForm.author.trim()) fd.append('author', bookForm.author.trim());
       if (bookForm.description.trim()) fd.append('description', bookForm.description.trim());
       fd.append('sort_order', bookForm.sort_order || '0');
@@ -131,6 +244,7 @@ export default function Audiobooks() {
         await client.post('/audiobooks', fd);
       }
       await fetchBooks();
+      if (selectedTitle) await loadTitleBooks(selectedTitle);
       resetBookForm();
       setShowBookForm(false);
     } catch (e) { setBookSaveError(formatApiError(e)); }
@@ -279,10 +393,90 @@ export default function Audiobooks() {
     <div style={s.page}>
       <div style={s.header}>
         <h1 style={s.h1}>📚 Audio Books</h1>
-        <button style={s.addBtn} onClick={openAddBook}>+ Add Book</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={s.addBtn} onClick={openAddTitle}>+ Add Title</button>
+          {selectedTitle && <button style={s.addBtn} onClick={openAddBook}>+ Add Book</button>}
+        </div>
       </div>
 
       <ErrorBanner message={error} />
+
+      {showTitleForm && (
+        <form ref={titleFormRef} style={s.form} onSubmit={handleSaveTitle}>
+          <p style={s.formTitle}>{titleEditId ? 'Edit Title' : 'New Title (Collection)'}</p>
+          <div style={s.grid2}>
+            <div style={s.field}>
+              <label style={s.label}>Title Name *</label>
+              <input style={s.input} value={titleForm.title} onChange={e => setTitleForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Karbala Stories" />
+            </div>
+            <div style={s.field}>
+              <label style={s.label}>Sort Order</label>
+              <input style={s.input} type="number" value={titleForm.sort_order} onChange={e => setTitleForm(f => ({ ...f, sort_order: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ ...s.field, marginTop: 14 }}>
+            <label style={s.label}>Description</label>
+            <textarea style={s.textarea} value={titleForm.description} onChange={e => setTitleForm(f => ({ ...f, description: e.target.value }))} />
+          </div>
+          <div style={{ ...s.field, marginTop: 14 }}>
+            <label style={s.label}>Cover Image (optional)</label>
+            <div style={s.filePick} onClick={() => titleCoverRef.current?.click()}>
+              🖼️ {titleCoverFile ? titleCoverFile.name : (existingTitleCover ? 'Replace cover...' : 'Choose cover...')}
+            </div>
+            <input ref={titleCoverRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleTitleCoverPick} />
+            {(titleCoverPreview || existingTitleCover) && (
+              <img src={titleCoverPreview || existingTitleCover} alt="" style={s.imgPreview} />
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
+            <input type="checkbox" id="title-pub" checked={titleForm.is_published} onChange={e => setTitleForm(f => ({ ...f, is_published: e.target.checked }))} />
+            <label htmlFor="title-pub" style={{ ...s.label, cursor: 'pointer' }}>Published</label>
+          </div>
+          {titleSaveError && <p style={s.errMsg}>{titleSaveError}</p>}
+          <div style={s.row}>
+            <button type="button" style={s.cancelBtn} onClick={() => { resetTitleForm(); setShowTitleForm(false); }}>Cancel</button>
+            <button type="submit" style={s.saveBtn} disabled={titleSaving}>{titleSaving ? 'Saving...' : (titleEditId ? 'Save Title' : 'Create Title')}</button>
+          </div>
+        </form>
+      )}
+
+      <p style={{ color: 'var(--grey)', fontSize: 12, marginBottom: 12 }}>
+        Pehle <strong>Title</strong> banayein, phir uske andar books add karein. App mein user title pe click karke saari books dekhega.
+      </p>
+
+      {loading ? (
+        <p style={{ color: 'var(--grey)', textAlign: 'center', padding: 40 }}>Loading...</p>
+      ) : titles.length === 0 ? (
+        <p style={{ color: 'var(--grey)', textAlign: 'center', padding: 40 }}>No titles yet. Add a title above.</p>
+      ) : (
+        titles.map(t => (
+          <div
+            key={t.id}
+            style={{ ...s.card, ...(selectedTitle?.id === t.id ? s.cardActive : {}) }}
+            onClick={() => loadTitleBooks(t)}
+          >
+            {t.cover_image_url
+              ? <img src={t.cover_image_url} alt="" style={s.thumb} />
+              : <div style={s.thumbFallback}><span style={{ fontSize: 22 }}>📂</span></div>
+            }
+            <div style={s.cardBody}>
+              <div style={s.title}>{t.title}</div>
+              <div style={s.meta}>
+                <span>📚 {t.book_count ?? 0} books</span>
+                <span style={s.badge(t.is_published)}>{t.is_published ? 'Published' : 'Draft'}</span>
+              </div>
+            </div>
+            <button style={s.iconBtn} title="Edit" onClick={(e) => { e.stopPropagation(); openEditTitle(t); }}>✏️</button>
+            <button style={{ ...s.iconBtn, color: '#ef4444' }} title="Delete" onClick={(e) => { e.stopPropagation(); setDeleteTitleId(t.id); }}>🗑️</button>
+          </div>
+        ))
+      )}
+
+      {selectedTitle && (
+        <div style={s.section}>
+          <div style={s.header}>
+            <h2 style={{ ...s.h1, fontSize: 18 }}>Books — {selectedTitle.title}</h2>
+          </div>
 
       {showBookForm && (
         <form ref={bookFormRef} style={s.form} onSubmit={handleSaveBook}>
@@ -330,9 +524,9 @@ export default function Audiobooks() {
       )}
 
       {loading ? (
-        <p style={{ color: 'var(--grey)', textAlign: 'center', padding: 40 }}>Loading...</p>
+        <p style={{ color: 'var(--grey)', textAlign: 'center', padding: 20 }}>Loading books...</p>
       ) : books.length === 0 ? (
-        <p style={{ color: 'var(--grey)', textAlign: 'center', padding: 40 }}>No audio books yet. Add one above.</p>
+        <p style={{ color: 'var(--grey)', textAlign: 'center', padding: 20 }}>No books in this title yet. Add one above.</p>
       ) : (
         books.map(b => (
           <div
@@ -434,6 +628,21 @@ export default function Audiobooks() {
               </div>
             ))
           )}
+        </div>
+      )}
+        </div>
+      )}
+
+      {deleteTitleId && (
+        <div style={s.modal} onClick={() => setDeleteTitleId(null)}>
+          <div style={s.modalBox} onClick={e => e.stopPropagation()}>
+            <p style={{ color: 'var(--white)', fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Delete Title?</p>
+            <p style={{ color: 'var(--grey)', fontSize: 13, marginBottom: 22 }}>Books under this title will be unlinked.</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button style={s.cancelBtn} onClick={() => setDeleteTitleId(null)}>Cancel</button>
+              <button style={{ ...s.saveBtn, background: '#ef4444' }} onClick={() => handleDeleteTitle(deleteTitleId)}>Delete</button>
+            </div>
+          </div>
         </div>
       )}
 
