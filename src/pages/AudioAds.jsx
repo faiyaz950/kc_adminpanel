@@ -112,10 +112,20 @@ export default function AudioAds() {
       setMediaFile(null);
       setImageFile(null);
       load();
-    } catch {
-      setError(form.type === 'video'
-        ? 'Save failed — check video format (MP4, max 50MB)'
-        : 'Save failed — check audio format (MP3/M4A, max 20MB)');
+    } catch (err) {
+      const resp = err.response;
+      if (resp?.status === 422 && resp.data?.errors) {
+        const msgs = Object.values(resp.data.errors).flat().join(', ');
+        setError(`Validation failed: ${msgs}`);
+      } else if (resp?.data?.message) {
+        setError(`Save failed: ${resp.data.message}`);
+      } else if (err.code === 'ECONNABORTED') {
+        setError('Save failed — upload timed out. Check internet connection or file size.');
+      } else {
+        setError(form.type === 'video'
+          ? 'Save failed — check video format (MP4, max 50MB)'
+          : 'Save failed — check audio format (MP3/M4A, max 20MB)');
+      }
     } finally {
       setSaving(false);
     }
