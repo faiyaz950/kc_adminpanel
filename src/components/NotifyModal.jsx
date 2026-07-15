@@ -25,7 +25,7 @@ export default function NotifyModal({ track, trackType, onClose }) {
         title:      track.title,
         reciter:    track.reciter_name || track.anjuman_name || track.maulana_name || track.nauhakhwan_name || '',
         image_url:  track.image_url || '',
-      });
+      }, { timeout: 120000 });
       setResult({
         success: true,
         sent: res.data.sent ?? 0,

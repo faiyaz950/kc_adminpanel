@@ -4,6 +4,10 @@ export function formatApiError(err, fallback = 'Request failed.') {
   const data = err?.response?.data;
 
   if (err?.code === 'ECONNABORTED' || /timeout/i.test(err?.message || '')) {
+    const url = err?.config?.url || '';
+    if (/notification/i.test(url)) {
+      return 'Notification bhejne mein timeout ho gaya. Bahut zyada users hain — thodi der baad dubara try karein.';
+    }
     return 'Upload timeout ho gaya. Badi audio file hai — 2-3 minute wait karein, phir dubara try karein.';
   }
   if (!err?.response) {
