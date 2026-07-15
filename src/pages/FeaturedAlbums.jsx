@@ -88,6 +88,34 @@ export default function FeaturedAlbums({ embedded = false }) {
   const moveUp = (i) => { if (i > 0) moveItem(i, i - 1); };
   const moveDown = (i) => { if (i < items.length - 1) moveItem(i, i + 1); };
 
+  const [removing, setRemoving] = useState(null);
+
+  const removeFeatured = async (track, index) => {
+    const sourceType = track.featured_type || 'track';
+    const sourceId = track.featured_source_id ?? track.id;
+    if (!confirm(`"${track.title}" ko featured se remove karein?`)) return;
+
+    const endpoint = sourceType === 'ulema_track'
+      ? `/ulema-tracks/${sourceId}`
+      : sourceType === 'anjuman_track'
+        ? `/anjuman-tracks/${sourceId}`
+        : `/tracks/${sourceId}`;
+
+    setRemoving(itemKey(track));
+    try {
+      const formData = new FormData();
+      formData.append('is_featured', '0');
+      await client.post(endpoint, formData);
+      setItems(prev => prev.filter((_, i) => i !== index));
+      setSaveMsg('✓ Featured se remove ho gaya!');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch (err) {
+      setSaveMsg(`Error: ${formatApiError(err, 'Remove nahi hua.')}`);
+    } finally {
+      setRemoving(null);
+    }
+  };
+
   // ── Drag handlers ──
   const onDragStart = (i) => { dragIndex.current = i; };
   const onDragOver = (e, i) => {
@@ -278,6 +306,32 @@ export default function FeaturedAlbums({ embedded = false }) {
                     }}
                   >▼</button>
                 </div>
+
+                {/* Remove from featured */}
+                <button
+                  type="button"
+                  onClick={() => removeFeatured(track, i)}
+                  disabled={removing === itemKey(track)}
+                  title="Featured se remove karein"
+                  style={{
+                    width: 28, height: 28, borderRadius: 7, flexShrink: 0,
+                    border: '1px solid rgba(239,68,68,.25)',
+                    background: removing === itemKey(track) ? 'rgba(239,68,68,.15)' : 'rgba(239,68,68,.08)',
+                    color: '#EF4444',
+                    cursor: removing === itemKey(track) ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all .15s',
+                    opacity: removing === itemKey(track) ? 0.5 : 1,
+                  }}
+                >
+                  {removing === itemKey(track) ? (
+                    <span style={{ width: 12, height: 12, border: '2px solid rgba(239,68,68,.3)', borderTopColor: '#EF4444', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  )}
+                </button>
               </div>
             );
           })}
