@@ -828,9 +828,9 @@ function TrackTableRow({ track, previewTrackId, setPreviewTrackId, onEdit, onDel
         <td>
           <button type="button" className="tbl-btn tbl-btn-edit" onClick={() => onEdit(track)}>Edit</button>
           <button type="button" className="tbl-btn tbl-btn-delete" onClick={() => onDelete(track.id)}>Delete</button>
-          <button type="button" className="tbl-btn" onClick={() => onNotify(track)}
-            style={{ background: 'rgba(139,92,246,.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.3)' }}
-            title="Push notification bhejein">
+          <button type="button" className="tbl-btn" disabled
+            style={{ background: 'rgba(139,92,246,.08)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.2)', opacity: 0.4, cursor: 'not-allowed' }}
+            title="Notifications temporarily disabled">
             🔔
           </button>
         </td>
@@ -886,9 +886,9 @@ function TrackCard({ track, previewTrackId, setPreviewTrackId, onEdit, onDelete,
         )}
         <button type="button" className="tbl-btn tbl-btn-edit" onClick={() => onEdit(track)}>Edit</button>
         <button type="button" className="tbl-btn tbl-btn-delete" onClick={() => onDelete(track.id)}>Delete</button>
-        <button type="button" className="tbl-btn" onClick={() => onNotify(track)}
-          style={{ background: 'rgba(139,92,246,.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.3)' }}
-          title="Push notification bhejein">
+        <button type="button" className="tbl-btn" disabled
+          style={{ background: 'rgba(139,92,246,.08)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.2)', opacity: 0.4, cursor: 'not-allowed' }}
+          title="Notifications temporarily disabled">
           🔔 Notify
         </button>
       </div>

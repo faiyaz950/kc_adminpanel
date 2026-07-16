@@ -725,17 +725,18 @@ export default function OldNauhs() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setNotifyTrack(track)}
+                    disabled
                     style={{
-                      background: 'rgba(139,92,246,.12)',
-                      border: '1px solid rgba(139,92,246,.3)',
+                      background: 'rgba(139,92,246,.08)',
+                      border: '1px solid rgba(139,92,246,.2)',
                       color: '#a78bfa',
                       borderRadius: 8,
                       padding: '7px 10px',
-                      cursor: 'pointer',
+                      cursor: 'not-allowed',
                       fontSize: 14,
+                      opacity: 0.4,
                     }}
-                    title="Push notification bhejein"
+                    title="Notifications temporarily disabled"
                   >🔔</button>
                 </div>
               </div>

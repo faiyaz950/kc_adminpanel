@@ -502,9 +502,9 @@ function UlemaTracks({ ulema, onBack, onUlemaUpdated }) {
       <td><div style={{ display: 'flex', gap: 6 }}>
         <button className="tbl-btn tbl-btn-edit" onClick={() => handleEdit(t)}>Edit</button>
         <button className="tbl-btn tbl-btn-delete" onClick={() => handleDelete(t.id)}>Delete</button>
-        <button className="tbl-btn" onClick={() => setNotifyTrack(t)}
-          style={{ background: 'rgba(139,92,246,.12)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.3)' }}
-          title="Push notification bhejein">🔔</button>
+        <button className="tbl-btn" disabled
+          style={{ background: 'rgba(139,92,246,.08)', color: '#a78bfa', border: '1px solid rgba(139,92,246,.2)', opacity: 0.4, cursor: 'not-allowed' }}
+          title="Notifications temporarily disabled">🔔</button>
       </div></td>
     </tr>
   );
