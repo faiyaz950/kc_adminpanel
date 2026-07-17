@@ -16,11 +16,13 @@ export default function NewReleases() {
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview]   = useState(null);
 
-  // Track picker
+  // Track picker — already-uploaded reciter tracks, browsable (no typing required)
+  const [allTracks, setAllTracks]       = useState([]);
+  const [tracksLoaded, setTracksLoaded] = useState(false);
   const [trackQuery, setTrackQuery]     = useState('');
-  const [trackResults, setTrackResults] = useState([]);
-  const [pickedTrack, setPickedTrack]   = useState(null); // { id, title, reciter_name }
-  const searchTimer = useRef(null);
+  const [pickerOpen, setPickerOpen]     = useState(false);
+  const [pickedTrack, setPickedTrack]   = useState(null); // { id, title, reciter_name, image_url }
+  const pickerRef = useRef(null);
 
   function emptyForm() {
     return { title: '', release_type: 'Single', artists: '', is_active: true, sort_order: 0 };
@@ -36,16 +38,35 @@ export default function NewReleases() {
 
   useEffect(load, []);
 
+  // Uploaded tracks ek baar load karke rakhte hain — dropdown turant khulta hai
+  const loadTracksIfNeeded = () => {
+    if (tracksLoaded) return;
+    setTracksLoaded(true);
+    client.get('/tracks')
+      .then(r => setAllTracks(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setAllTracks([]));
+  };
+
   useEffect(() => {
-    if (!trackQuery.trim()) { setTrackResults([]); return; }
-    clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      client.get('/tracks', { params: { search: trackQuery.trim() } })
-        .then(r => setTrackResults((r.data || []).slice(0, 8)))
-        .catch(() => setTrackResults([]));
-    }, 350);
-    return () => clearTimeout(searchTimer.current);
-  }, [trackQuery]);
+    const onClickOutside = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  const trackResults = (() => {
+    const q = trackQuery.trim().toLowerCase();
+    const list = !q
+      ? allTracks
+      : allTracks.filter(t =>
+          (t.title || '').toLowerCase().includes(q) ||
+          (t.reciter_name || t.reciter?.name || '').toLowerCase().includes(q)
+        );
+    return list.slice(0, 40);
+  })();
 
   const openAdd = () => {
     setEditId(null);
@@ -54,7 +75,9 @@ export default function NewReleases() {
     setPreview(null);
     setPickedTrack(null);
     setTrackQuery('');
+    setPickerOpen(false);
     setShowForm(true);
+    loadTracksIfNeeded();
   };
 
   const openEdit = (r) => {
@@ -68,10 +91,21 @@ export default function NewReleases() {
     });
     setImageFile(null);
     setPreview(r.image_url);
-    setPickedTrack(r.track_id ? { id: r.track_id, title: `Track #${r.track_id}`, reciter_name: '' } : null);
+    setPickedTrack(r.track_id ? { id: r.track_id, title: `Track #${r.track_id}`, reciter_name: '', _placeholder: true } : null);
     setTrackQuery('');
+    setPickerOpen(false);
     setShowForm(true);
+    loadTracksIfNeeded();
   };
+
+  // Edit form khulne par jo track pehle se linked hai, uski asli details fill karo
+  useEffect(() => {
+    if (pickedTrack?._placeholder && allTracks.length > 0) {
+      const match = allTracks.find(t => String(t.id) === String(pickedTrack.id));
+      if (match) setPickedTrack(match);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTracks]);
 
   const handleSave = async () => {
     if (!form.title.trim()) { setError('Title zaroori hai'); return; }
@@ -227,44 +261,66 @@ export default function NewReleases() {
 
           {/* Track link */}
           <div style={{ marginTop: 16, maxWidth: 460 }}>
-            <label style={labelStyle}>Track link (optional — tap par ye track play hoga)</label>
+            <label style={labelStyle}>Link an uploaded track (optional — tap par ye play hoga)</label>
             {pickedTrack ? (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.3)',
-                borderRadius: 10, padding: '9px 12px',
+                borderRadius: 10, padding: '8px 10px',
               }}>
-                <span style={{ color: 'var(--emerald-light)', fontSize: 13, fontWeight: 600, flex: 1 }}>
-                  {pickedTrack.title}{pickedTrack.reciter_name ? ` — ${pickedTrack.reciter_name}` : ''}
+                {pickedTrack.image_url && (
+                  <img src={pickedTrack.image_url} alt="" style={{ width: 34, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                )}
+                <span style={{ color: 'var(--emerald-light)', fontSize: 13, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {pickedTrack.title}{(pickedTrack.reciter_name || pickedTrack.reciter?.name) ? ` — ${pickedTrack.reciter_name || pickedTrack.reciter?.name}` : ''}
                 </span>
-                <button onClick={() => setPickedTrack(null)} style={{ background: 'none', border: 'none', color: 'var(--grey)', cursor: 'pointer', fontSize: 14 }}>✕</button>
+                <button onClick={() => setPickedTrack(null)} style={{ background: 'none', border: 'none', color: 'var(--grey)', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>✕</button>
               </div>
             ) : (
-              <div style={{ position: 'relative' }}>
+              <div ref={pickerRef} style={{ position: 'relative' }}>
                 <input
                   value={trackQuery}
                   onChange={e => setTrackQuery(e.target.value)}
-                  placeholder="Track title ya reciter se search karein…"
+                  onFocus={() => { setPickerOpen(true); loadTracksIfNeeded(); }}
+                  placeholder="Uploaded tracks browse karein ya search karein…"
                   style={inputStyle}
                 />
-                {trackResults.length > 0 && (
+                {pickerOpen && (
                   <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
                     background: 'var(--bg-elevated, #122214)', border: '1px solid var(--divider)',
-                    borderRadius: 10, marginTop: 4, overflow: 'hidden', maxHeight: 260, overflowY: 'auto',
+                    borderRadius: 10, marginTop: 4, overflow: 'hidden', maxHeight: 300, overflowY: 'auto',
+                    boxShadow: '0 8px 24px rgba(0,0,0,.4)',
                   }}>
-                    {trackResults.map(t => (
-                      <div
-                        key={t.id}
-                        onClick={() => { setPickedTrack(t); setTrackQuery(''); setTrackResults([]); }}
-                        style={{ padding: '9px 12px', cursor: 'pointer', borderBottom: '1px solid var(--divider)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,.04)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <div style={{ color: 'var(--white)', fontSize: 13, fontWeight: 600 }}>{t.title}</div>
-                        <div style={{ color: 'var(--grey)', fontSize: 11.5 }}>{t.reciter_name || t.reciter?.name || ''}</div>
+                    {!tracksLoaded || (tracksLoaded && allTracks.length === 0 && trackResults.length === 0) ? (
+                      <div style={{ padding: '14px 12px', color: 'var(--grey)', fontSize: 12.5, textAlign: 'center' }}>
+                        {tracksLoaded ? 'Koi uploaded track nahi mili' : 'Loading tracks…'}
                       </div>
-                    ))}
+                    ) : trackResults.length === 0 ? (
+                      <div style={{ padding: '14px 12px', color: 'var(--grey)', fontSize: 12.5, textAlign: 'center' }}>
+                        Is search se koi track nahi mili
+                      </div>
+                    ) : (
+                      trackResults.map(t => (
+                        <div
+                          key={t.id}
+                          onClick={() => { setPickedTrack(t); setTrackQuery(''); setPickerOpen(false); }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--divider)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,.04)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {t.image_url ? (
+                            <img src={t.image_url} alt="" style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                          ) : (
+                            <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--bg-surface)', flexShrink: 0 }} />
+                          )}
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ color: 'var(--white)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
+                            <div style={{ color: 'var(--grey)', fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.reciter_name || t.reciter?.name || ''}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
