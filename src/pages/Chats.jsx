@@ -15,6 +15,7 @@ export default function Chats() {
   const [messages, setMessages] = useState([]);
   const [threadLoading, setThreadLoading] = useState(false);
   const [draft, setDraft] = useState('');
+  const [attach, setAttach] = useState(null); // { file, url }
   const [sending, setSending] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -22,6 +23,33 @@ export default function Chats() {
   const activeIdRef = useRef(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const fileRef = useRef(null);
+
+  const pickImage = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      alert('Sirf JPG / PNG / WebP images allowed hain');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image 5 MB se chhoti honi chahiye');
+      return;
+    }
+    setAttach(prev => {
+      if (prev?.url) URL.revokeObjectURL(prev.url);
+      return { file, url: URL.createObjectURL(file) };
+    });
+    inputRef.current?.focus();
+  };
+
+  const clearAttach = () => {
+    setAttach(prev => {
+      if (prev?.url) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  };
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768);
@@ -118,12 +146,22 @@ export default function Chats() {
 
   const send = async () => {
     const text = draft.trim();
+    const image = attach;
     const userId = activeIdRef.current;
-    if (!text || !userId || sending) return;
+    if ((!text && !image) || !userId || sending) return;
     setSending(true);
     setDraft('');
+    clearAttach();
     try {
-      const r = await client.post(`/admin/chats/${userId}/messages`, { message: text });
+      let payload;
+      if (image) {
+        payload = new FormData();
+        if (text) payload.append('message', text);
+        payload.append('image', image.file);
+      } else {
+        payload = { message: text };
+      }
+      const r = await client.post(`/admin/chats/${userId}/messages`, payload);
       const msg = r.data?.data;
       if (msg && activeIdRef.current === userId) {
         setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
@@ -135,7 +173,7 @@ export default function Chats() {
         const rest = prev.filter(x => x.user.id !== userId);
         const cur = prev.find(x => x.user.id === userId);
         return cur
-          ? [{ ...cur, last_message: text, last_sender: 'admin', last_message_at: new Date().toISOString() }, ...rest]
+          ? [{ ...cur, last_message: text || '📷 Photo', last_sender: 'admin', last_message_at: new Date().toISOString() }, ...rest]
           : prev;
       });
     } catch (e) {
@@ -148,7 +186,7 @@ export default function Chats() {
           params: lastIdRef.current > 0 ? { after_id: lastIdRef.current } : {},
         });
         const fresh = chk.data?.messages || [];
-        landed = fresh.some(m => m.sender === 'admin' && m.message === text);
+        landed = fresh.some(m => m.sender === 'admin' && (text ? m.message === text : !!m.image_url));
         if (fresh.length && activeIdRef.current === userId) {
           setMessages(prev => {
             const known = new Set(prev.map(m => m.id));
@@ -161,7 +199,9 @@ export default function Chats() {
         }
       } catch { /* refetch bhi fail — genuinely offline */ }
       if (!landed) {
-        setDraft(text); // wapas rakh do taaki dubara try ho sake
+        // wapas rakh do taaki dubara try ho sake
+        setDraft(text);
+        if (image) setAttach({ file: image.file, url: URL.createObjectURL(image.file) });
         alert('Message send nahi hua — dubara try karein');
       }
     } finally {
@@ -291,30 +331,72 @@ export default function Chats() {
                 </div>
 
                 {/* Composer */}
-                <div style={composer}>
-                  <textarea
-                    ref={inputRef}
-                    value={draft}
-                    onChange={e => setDraft(e.target.value)}
-                    onKeyDown={onKeyDown}
-                    placeholder="Reply likhein… (Enter = send, Shift+Enter = new line)"
-                    rows={1}
-                    style={composerInput}
-                  />
-                  <button
-                    onClick={send}
-                    disabled={!draft.trim() || sending}
-                    style={{
-                      ...sendBtn,
-                      opacity: draft.trim() && !sending ? 1 : 0.4,
-                      cursor: draft.trim() && !sending ? 'pointer' : 'default',
-                    }}
-                    aria-label="Send"
-                  >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1A1205" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                    </svg>
-                  </button>
+                <div style={{ borderTop: '1px solid var(--divider)', background: 'var(--bg-surface)', flexShrink: 0 }}>
+                  {attach && (
+                    <div style={{ padding: '10px 14px 0', display: 'flex' }}>
+                      <div style={{ position: 'relative' }}>
+                        <img
+                          src={attach.url}
+                          alt="attachment preview"
+                          style={{ width: 68, height: 68, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--divider)', display: 'block' }}
+                        />
+                        <button
+                          onClick={clearAttach}
+                          aria-label="Remove image"
+                          style={{
+                            position: 'absolute', top: -7, right: -7,
+                            width: 20, height: 20, borderRadius: '50%',
+                            background: '#1A1A1A', border: '1px solid rgba(255,255,255,.3)',
+                            color: 'var(--white)', fontSize: 11, lineHeight: 1,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', padding: 0,
+                          }}
+                        >✕</button>
+                      </div>
+                    </div>
+                  )}
+                  <div style={composer}>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={pickImage}
+                      style={{ display: 'none' }}
+                    />
+                    <button
+                      onClick={() => fileRef.current?.click()}
+                      aria-label="Attach image"
+                      title="Attach image"
+                      style={attachBtn}
+                    >
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--gold-light)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+                      </svg>
+                    </button>
+                    <textarea
+                      ref={inputRef}
+                      value={draft}
+                      onChange={e => setDraft(e.target.value)}
+                      onKeyDown={onKeyDown}
+                      placeholder="Reply likhein… (Enter = send, Shift+Enter = new line)"
+                      rows={1}
+                      style={composerInput}
+                    />
+                    <button
+                      onClick={send}
+                      disabled={(!draft.trim() && !attach) || sending}
+                      style={{
+                        ...sendBtn,
+                        opacity: (draft.trim() || attach) && !sending ? 1 : 0.4,
+                        cursor: (draft.trim() || attach) && !sending ? 'pointer' : 'default',
+                      }}
+                      aria-label="Send"
+                    >
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1A1205" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </>
             )}
@@ -405,11 +487,12 @@ function MessageList({ messages }) {
 
 function Bubble({ msg }) {
   const isAdmin = msg.sender === 'admin';
+  const hasImage = !!msg.image_url;
   return (
     <div style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
       <div style={{
         maxWidth: '72%',
-        padding: '9px 13px',
+        padding: hasImage ? 5 : '9px 13px',
         borderRadius: isAdmin ? '16px 16px 5px 16px' : '16px 16px 16px 5px',
         background: isAdmin
           ? 'linear-gradient(135deg, #F0C355, #D4A843)'
@@ -417,14 +500,31 @@ function Bubble({ msg }) {
         border: isAdmin ? 'none' : '1px solid var(--divider)',
         boxShadow: isAdmin ? '0 4px 14px rgba(212,168,67,.18)' : '0 3px 10px rgba(0,0,0,.25)',
       }}>
-        <p style={{
-          margin: 0, fontSize: 13, lineHeight: 1.5,
-          color: isAdmin ? '#1A1205' : 'var(--grey-light)',
-          fontWeight: isAdmin ? 600 : 400,
-          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-        }}>
-          {msg.message}
-        </p>
+        {hasImage && (
+          <a href={msg.image_url} target="_blank" rel="noreferrer" title="Open full size">
+            <img
+              src={msg.image_url}
+              alt="chat attachment"
+              loading="lazy"
+              style={{
+                display: 'block', maxWidth: 260, maxHeight: 280,
+                width: '100%', objectFit: 'cover',
+                borderRadius: 12, cursor: 'zoom-in',
+              }}
+            />
+          </a>
+        )}
+        {msg.message && (
+          <p style={{
+            margin: 0, fontSize: 13, lineHeight: 1.5,
+            padding: hasImage ? '6px 8px 2px' : 0,
+            color: isAdmin ? '#1A1205' : 'var(--grey-light)',
+            fontWeight: isAdmin ? 600 : 400,
+            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          }}>
+            {msg.message}
+          </p>
+        )}
         <div style={{
           fontSize: 9.5, marginTop: 3, textAlign: 'right',
           color: isAdmin ? 'rgba(26,18,5,.55)' : 'var(--grey)',
@@ -570,9 +670,13 @@ const msgArea = {
 const composer = {
   display: 'flex', alignItems: 'flex-end', gap: 10,
   padding: '12px 14px',
-  borderTop: '1px solid var(--divider)',
-  background: 'var(--bg-surface)',
-  flexShrink: 0,
+};
+const attachBtn = {
+  width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+  background: 'rgba(255,255,255,.04)',
+  border: '1px solid rgba(212,168,67,.3)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  cursor: 'pointer',
 };
 const composerInput = {
   flex: 1, resize: 'none',
