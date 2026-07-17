@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import client from '../api/client';
 import kcLogo from '../assets/kc_logo.png';
@@ -38,6 +39,10 @@ const NAV = [
   {
     to: '/users', label: 'Users',
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  },
+  {
+    to: '/chats', label: 'Live Chat',
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>,
   },
   {
     to: '/messages', label: 'Messages',
@@ -90,6 +95,19 @@ const NAV = [
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
+  const [chatUnread, setChatUnread] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      client.get('/admin/chats/unread-count')
+        .then(r => { if (alive) setChatUnread(r.data?.unread || 0); })
+        .catch(() => {});
+    load();
+    const t = setInterval(load, 30000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+
   const handleLogout = async () => {
     try { await client.post('/logout'); } catch {}
     localStorage.removeItem('token');
@@ -219,6 +237,17 @@ export default function Sidebar({ isOpen, onClose }) {
               >
                 <span style={{ flexShrink: 0 }}>{item.icon}</span>
                 <span style={{ fontWeight: 600, fontSize: 14 }}>{item.label}</span>
+                {item.to === '/chats' && chatUnread > 0 && (
+                  <span style={{
+                    marginLeft: 'auto',
+                    background: 'linear-gradient(135deg, #F0C355, #D4A843)',
+                    color: '#1A1205', fontSize: 10, fontWeight: 800,
+                    borderRadius: 10, minWidth: 18, height: 18, padding: '0 5px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {chatUnread > 99 ? '99+' : chatUnread}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>
