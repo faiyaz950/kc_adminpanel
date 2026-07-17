@@ -140,8 +140,30 @@ export default function Chats() {
       });
     } catch (e) {
       console.error(e);
-      setDraft(text); // wapas rakh do taaki dubara try ho sake
-      alert('Message send nahi hua — dubara try karein');
+      // Timeout par bhi message aksar server par ban chuka hota hai —
+      // pehle thread refetch karke confirm karo, tabhi error dikhao
+      let landed = false;
+      try {
+        const chk = await client.get(`/admin/chats/${userId}/messages`, {
+          params: lastIdRef.current > 0 ? { after_id: lastIdRef.current } : {},
+        });
+        const fresh = chk.data?.messages || [];
+        landed = fresh.some(m => m.sender === 'admin' && m.message === text);
+        if (fresh.length && activeIdRef.current === userId) {
+          setMessages(prev => {
+            const known = new Set(prev.map(m => m.id));
+            const newOnes = fresh.filter(m => !known.has(m.id));
+            return newOnes.length ? [...prev, ...newOnes] : prev;
+          });
+          const maxId = Math.max(...fresh.map(m => m.id));
+          if (maxId > lastIdRef.current) lastIdRef.current = maxId;
+          setTimeout(() => scrollToBottom(), 40);
+        }
+      } catch { /* refetch bhi fail — genuinely offline */ }
+      if (!landed) {
+        setDraft(text); // wapas rakh do taaki dubara try ho sake
+        alert('Message send nahi hua — dubara try karein');
+      }
     } finally {
       setSending(false);
       inputRef.current?.focus();
