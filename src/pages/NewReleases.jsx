@@ -99,6 +99,7 @@ export default function NewReleases() {
   };
 
   // Edit form khulne par jo track pehle se linked hai, uski asli details fill karo
+  // (title/preview already sahi hain kyunki wo release record se aaye hain)
   useEffect(() => {
     if (pickedTrack?._placeholder && allTracks.length > 0) {
       const match = allTracks.find(t => String(t.id) === String(pickedTrack.id));
@@ -107,9 +108,29 @@ export default function NewReleases() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allTracks]);
 
+  // Track link hote hi uska apna title/cover turant form mein bhar do —
+  // app mein hamesha track wala hi title/image dikhna chahiye
+  const pickTrack = (t) => {
+    setPickedTrack(t);
+    setForm(f => ({ ...f, title: t.title || '' }));
+    setPreview(t.image_url || null);
+    setImageFile(null);
+    setTrackQuery('');
+    setPickerOpen(false);
+  };
+
+  const unpickTrack = () => {
+    setPickedTrack(null);
+    setForm(f => ({ ...f, title: '' }));
+    setPreview(null);
+    setImageFile(null);
+  };
+
   const handleSave = async () => {
-    if (!form.title.trim()) { setError('Title zaroori hai'); return; }
-    if (!editId && !imageFile) { setError('Cover image select karein'); return; }
+    if (!pickedTrack) {
+      if (!form.title.trim()) { setError('Title zaroori hai (ya koi track link karein)'); return; }
+      if (!editId && !imageFile) { setError('Cover image select karein (ya koi track link karein)'); return; }
+    }
     setSaving(true);
     setError('');
     try {
@@ -199,12 +220,13 @@ export default function NewReleases() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
             <div>
-              <label style={labelStyle}>Title *</label>
+              <label style={labelStyle}>Title {pickedTrack ? '(from linked track)' : '*'}</label>
               <input
                 value={form.title}
                 onChange={e => setForm({ ...form, title: e.target.value })}
                 placeholder="e.g. Hussain Kehtay Hain"
-                style={inputStyle}
+                disabled={!!pickedTrack}
+                style={{ ...inputStyle, opacity: pickedTrack ? 0.6 : 1, cursor: pickedTrack ? 'not-allowed' : 'text' }}
               />
             </div>
             <div>
@@ -238,30 +260,32 @@ export default function NewReleases() {
             </div>
           </div>
 
-          {/* Cover image */}
-          <div style={{ marginTop: 16 }}>
-            <label style={labelStyle}>Cover Image {editId ? '(change karne ke liye select karein)' : '*'} — square best lagti hai</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {preview && (
-                <img src={preview} alt="cover preview" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--divider)' }} />
-              )}
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={e => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  setImageFile(f);
-                  setPreview(URL.createObjectURL(f));
-                }}
-                style={{ color: 'var(--grey)', fontSize: 13 }}
-              />
+          {/* Cover image — track linked ho to uski apni cover use hoti hai */}
+          {!pickedTrack && (
+            <div style={{ marginTop: 16 }}>
+              <label style={labelStyle}>Cover Image {editId ? '(change karne ke liye select karein)' : '*'} — square best lagti hai</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                {preview && (
+                  <img src={preview} alt="cover preview" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 12, border: '1px solid var(--divider)' }} />
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    setImageFile(f);
+                    setPreview(URL.createObjectURL(f));
+                  }}
+                  style={{ color: 'var(--grey)', fontSize: 13 }}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Track link */}
           <div style={{ marginTop: 16, maxWidth: 460 }}>
-            <label style={labelStyle}>Link an uploaded track (optional — tap par ye play hoga)</label>
+            <label style={labelStyle}>Link an uploaded track (optional — title & cover us track se aayenge)</label>
             {pickedTrack ? (
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 10,
@@ -274,7 +298,7 @@ export default function NewReleases() {
                 <span style={{ color: 'var(--emerald-light)', fontSize: 13, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {pickedTrack.title}{(pickedTrack.reciter_name || pickedTrack.reciter?.name) ? ` — ${pickedTrack.reciter_name || pickedTrack.reciter?.name}` : ''}
                 </span>
-                <button onClick={() => setPickedTrack(null)} style={{ background: 'none', border: 'none', color: 'var(--grey)', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>✕</button>
+                <button onClick={unpickTrack} style={{ background: 'none', border: 'none', color: 'var(--grey)', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}>✕</button>
               </div>
             ) : (
               <div ref={pickerRef} style={{ position: 'relative' }}>
@@ -304,7 +328,7 @@ export default function NewReleases() {
                       trackResults.map(t => (
                         <div
                           key={t.id}
-                          onClick={() => { setPickedTrack(t); setTrackQuery(''); setPickerOpen(false); }}
+                          onClick={() => pickTrack(t)}
                           style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--divider)' }}
                           onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,.04)'}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
